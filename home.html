@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0b1220">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>SAT SPRINT — Bitcoin Runner</title>
+    <style>
+        :root {
+            --sky-top: #111827;
+            --sky-bot: #2b2118;
+            --hill-far: #3a4652;
+            --hill-near: #263442;
+            --ground: #171717;
+            --ground-top: #f7931a;
+            --char: #f7931a;
+            --char-dark: #c96b0c;
+            --coin: #ffb300;
+            --coin-dark: #d18a00;
+            --ink: #f8fafc;
+            --card: #111827;
+            --accent: #f7931a;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+            background: #111;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 18px 0 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            font-weight: bold;
+            color: var(--ink);
+            text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        #hudRight {
+            display: flex;
+            gap: 8px;
+            flex-direction: column;
+            align-items: flex-end
+        }
+
+        #streak,
+        #lightning {
+            font-size: 14px;
+            background: rgba(17, 24, 39, .78);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 16px;
+            border: 1px solid rgba(247, 147, 26, .45)
+        }
+
+        #lightning {
+            color: #ffb300
+        }
+
+        .card h2 {
+            margin: 8px 0 18px;
+            font-size: 22px
+        }
+
+        #quizAnswers {
+            display: grid;
+            gap: 10px
+        }
+
+        #quizAnswers button {
+            width: 100%;
+            font-size: 15px;
+            padding: 11px 12px
+        }
+
+        .quizFeedback {
+            min-height: 22px;
+            margin-top: 12px;
+            font-weight: bold
+        }
+
+        .homeButtons {
+            display: grid;
+            gap: 10px;
+            margin-top: 16px
+        }
+
+        button.secondary {
+            background: #1f2937;
+            border: 1px solid rgba(247, 147, 26, .45);
+            box-shadow: none
+        }
+
+        .timer {
+            margin-top: 12px;
+            font-weight: bold;
+            color: #ffb300
+        }
+
+        .tipGrid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin: 16px 0
+        }
+
+        .tipBtn {
+            background: #f7931a;
+            color: #111827
+        }
+
+        .rewardBox {
+            margin: 16px 0;
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(247, 147, 26, .1);
+            border: 1px solid rgba(247, 147, 26, .3);
+            text-align: left
+        }
+
+        .rewardBox span,
+        .smallNote {
+            font-size: 12px;
+            opacity: .7
+        }
+
+        #score {
+            font-size: 28px;
+            background: rgba(255, 255, 255, 0.55);
+            padding: 4px 14px;
+            border-radius: 16px;
+        }
+
+        #best {
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.55);
+            padding: 6px 12px;
+            border-radius: 16px;
+            margin-top: 2px;
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: rgba(20, 15, 10, 0.55);
+            backdrop-filter: blur(2px);
+            text-align: center;
+            color: white;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .card {
+            background: var(--card);
+            color: var(--ink);
+            border-radius: 22px;
+            padding: 28px 30px;
+            box-shadow: 0 12px 0 rgba(0, 0, 0, 0.25);
+            max-width: 340px;
+            width: 100%;
+        }
+
+        .card h1 {
+            margin: 0 0 6px 0;
+            font-size: 34px;
+            letter-spacing: 1px;
+            color: var(--char-dark);
+            text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        .card p {
+            margin: 6px 0 18px 0;
+            font-size: 15px;
+            opacity: 0.75;
+            line-height: 1.4;
+        }
+
+        .bignum {
+            font-size: 52px;
+            font-weight: bold;
+            color: var(--accent);
+            margin: 4px 0 0 0;
+            line-height: 1;
+        }
+
+        .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.55;
+            font-weight: bold;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 14px 0 22px 0;
+        }
+
+        button {
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 19px;
+            color: white;
+            background: var(--char);
+            border: none;
+            border-bottom: 5px solid var(--char-dark);
+            padding: 14px 34px;
+            border-radius: 16px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+
+        button:active {
+            border-bottom-width: 2px;
+            transform: translateY(3px);
+        }
+
+        #newbest {
+            display: inline-block;
+            background: var(--coin);
+            color: #5a4200;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 10px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        #howto {
+            position: absolute;
+            bottom: 18px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: var(--ink);
+            opacity: 0.6;
+            font-size: 13px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
+
+    <style>
+        #gameControls {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            right: 14px;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        #gameControls button {
+            pointer-events: auto;
+            font-size: 13px;
+            padding: 9px 13px;
+            border-radius: 12px;
+        }
+
+        #tipPrompt {
+            position: absolute;
+            left: 50%;
+            bottom: 54px;
+            transform: translateX(-50%);
+            z-index: 25;
+            display: none;
+            width: min(360px, calc(100% - 28px));
+            background: rgba(11, 18, 32, .94);
+            border: 1px solid rgba(247, 147, 26, .65);
+            border-radius: 14px;
+            padding: 10px 12px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
+            text-align: center;
+        }
+
+        #tipPrompt strong {
+            display: block;
+            font-size: 13px
+        }
+
+        #tipPrompt span {
+            display: block;
+            font-size: 11px;
+            opacity: .72;
+            margin: 3px 0 7px
+        }
+
+        #tipPrompt button {
+            font-size: 12px;
+            padding: 7px 10px
+        }
+
+        #pauseScreen .card {
+            max-width: 390px
+        }
+
+        .tipGrid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px
+        }
+
+        .tipBtn {
+            font-size: 14px !important;
+            padding: 12px 8px !important
+        }
+
+        .tipNote {
+            font-size: 11px;
+            opacity: .7;
+            line-height: 1.45
+        }
+
+        .statusPill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(247, 147, 26, .12);
+            border: 1px solid rgba(247, 147, 26, .35);
+            font-size: 11px
+        }
+    </style>
+    <link rel="manifest" href="manifest.webmanifest">
+    <style>
+        #saveResumeScreen .card {
+            max-width: 410px
+        }
+
+        #saveResumeScreen .runSummary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 14px 0
+        }
+
+        #saveResumeScreen .runSummary div {
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 12px;
+            padding: 10px
+        }
+
+        #saveResumeScreen .runSummary b {
+            display: block;
+            font-size: 17px;
+            margin-top: 3px
+        }
+
+        #saveToast {
+            position: fixed;
+            left: 50%;
+            top: 18px;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(16, 24, 39, .96);
+            border: 1px solid rgba(74, 222, 128, .55);
+            border-radius: 999px;
+            padding: 8px 13px;
+            font-size: 12px;
+            display: none;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, .3)
+        }
+
+        #supportScreen {
+            z-index: 60
+        }
+
+        #pauseScreen {
+            z-index: 55
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap">
+        <div id="saveToast">✓ Run saved</div>
+
+        <div class="overlay hidden" id="saveResumeScreen">
+            <div class="card">
+                <div class="label">⚡ SAVED RUN</div>
+                <h2>Continue your run?</h2>
+                <p>Your previous run is safely saved on this browser.</p>
+                <div class="runSummary">
+                    <div><span class="label">SCORE</span><b id="savedScore">0</b></div>
+                    <div><span class="label">SATS</span><b id="savedSats">0</b></div>
+                    <div><span class="label">CHARGE</span><b id="savedCharge">0%</b></div>
+                </div>
+                <button id="resumeSavedBtn">▶ Continue Run</button>
+                <button id="discardSavedBtn" class="secondary">Start New Run</button>
+            </div>
+        </div>
+
+        <div id="gameControls">
+            <button id="menuDuringGame" class="secondary">← Menu</button>
+            <button id="tipDuringGame" class="secondary">⚡ Gift sats</button>
+        </div>
+
+        <div id="tipPrompt">
+            <strong>Enjoying SAT SPRINT? ⚡</strong>
+            <span>Gift the developer some sats ❤️</span>
+            <button id="openTipFromPrompt" class="secondary">⚡ Gift sats</button>
+        </div>
+
+        <div class="overlay hidden" id="pauseScreen">
+            <div class="card">
+                <div class="label">RUN PAUSED</div>
+                <h2>Leave this run?</h2>
+                <p>Your current run will end if you exit.</p>
+                <div class="homeButtons">
+                    <button id="continueBtn">Continue</button>
+                    <button id="exitRunBtn" class="secondary">← Exit to Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="c"></canvas>
+        <div id="hud">
+            <div id="score">⚡ 0 sats</div>
+            <div id="hudRight">
+                <div id="streak">🔥 0</div>
+                <div id="lightning">⚡ 0%</div>
+            </div>
+        </div>
+        <div id="best"></div>
+        <div id="howto">TAP / SPACE — JUMP • ⚡ = LIGHTNING</div>
+
+        <div class="overlay" id="homeScreen">
+            <div class="card">
+                <div class="label">⚡ SAT SPRINT</div>
+                <h1>Bitcoin. Speed. Sats.</h1>
+                <p>Run, collect virtual sats, charge Lightning, learn Bitcoin and climb the leaderboard.</p>
+                <div class="stats">
+                    <div>
+                        <div class="label">❤️ LIVES</div>
+                        <div id="homeLives" style="font-size:24px;font-weight:bold">10 / 10</div>
+                    </div>
+                    <div>
+                        <div class="label">🟠 GAME SATS</div>
+                        <div id="homeSats" style="font-size:24px;font-weight:bold">0</div>
+                    </div>
+                </div>
+                <div class="homeButtons">
+                    <button id="homePlayBtn">▶ Play</button>
+                    <button id="supportBtn" class="secondary">⚡ Support Developer</button>
+                    <button id="walletBtn" class="secondary">⚡ Rewards & Wallet</button>
+                </div>
+                <div id="homeTimer" class="timer"></div>
+            </div>
+        </div>
+
+
+        <div class="overlay hidden" id="supportScreen">
+            <div class="card">
+                <div class="label">⚡ SUPPORT SAT SPRINT</div>
+                <h2>Enjoying the game? ❤️</h2>
+                <p>Support the developer with sats. Every bit helps keep SAT SPRINT running.</p>
+
+                <div class="rewardBox">
+                    <span class="statusPill">LIGHTNING ADDRESS</span>
+                    <p id="blinkAddress">mugoiri@blink.sv</p>
+                    <button id="copyBlinkAddress">📋 Copy Lightning Address</button>
+                    <p id="copyStatus" class="tipNote">Paste it into a Lightning-compatible wallet.</p>
+                </div>
+
+                <button id="supportBackBtn" class="secondary">← Back to Run</button>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="walletScreen">
+            <div class="card">
+                <div class="label">⚡ REWARDS & WALLET</div>
+                <h2>Your SAT SPRINT wallet</h2>
+                <div class="stats">
+                    <div>
+                        <div class="label">GAME SATS</div>
+                        <div id="walletGameSats" style="font-size:25px;font-weight:bold">0</div>
+                    </div>
+                    <div>
+                        <div class="label">REWARD POINTS</div>
+                        <div id="walletPoints" style="font-size:25px;font-weight:bold">0</div>
+                    </div>
+                    <div>
+                        <div class="label">VIRTUAL REWARD</div>
+                        <div id="walletReward" style="font-size:25px;font-weight:bold">0</div>
+                    </div>
+                </div>
+                <button id="walletBackBtn" class="secondary">← Back</button>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="startScreen">
+            <div class="card">
+                <h1>⚡ SAT SPRINT</h1>
+                <p>Run through Bitcoin. Grab sats, charge Lightning, dodge spikes and learn Bitcoin concepts.</p>
+                <button id="startBtn">▶ Start Sprint</button>
+                <p style="font-size:11px;margin-top:12px;opacity:.55">Game sats are virtual in this prototype. Real
+                    Lightning payouts require a secure server-side wallet and production review.</p>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="quizScreen">
+            <div class="card">
+                <div class="label">DAILY BLOCK QUIZ</div>
+                <h2 id="quizQuestion">What is a sat?</h2>
+                <div id="quizAnswers"></div>
+                <div id="quizFeedback" class="quizFeedback"></div>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="lifeScreen">
+            <div class="card">
+                <div class="label">💥 RUN OVER</div>
+                <h2>Use another life?</h2>
+                <p id="lifeStatus">You have 10 lives.</p>
+                <div class="homeButtons">
+                    <button id="useLifeBtn">❤️ Use 1 Life</button>
+                    <button id="buyLifeBtn">🟠 Buy 1 Life — 25 game sats</button>
+                    <button id="waitLifeBtn" class="secondary">⏱ Wait for Revival</button>
+                    <button id="lifeHomeBtn" class="secondary">⌂ Home</button>
+                </div>
+                <div id="lifeTimer" class="timer"></div>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="overScreen">
+            <div class="card">
+                <div class="label">SCORE</div>
+                <div class="bignum" id="finalScore">0</div>
+                <div class="stats">
+                    <div>
+                        <div class="label">BEST SCORE</div>
+                        <div style="font-size:22px;font-weight:bold" id="bestScoreLine">0</div>
+                    </div>
+                    <div>
+                        <div class="label">SATS COLLECTED</div>
+                        <div style="font-size:22px;font-weight:bold" id="coinLine">0</div>
+                    </div>
+                </div>
+                <div class="stats">
+                    <div>
+                        <div class="label">LIGHTNING</div>
+                        <div style="font-size:22px;font-weight:bold" id="finalLightning">0%</div>
+                    </div>
+                    <div>
+                        <div class="label">REWARD POINTS</div>
+                        <div style="font-size:22px;font-weight:bold" id="rewardPoints">0</div>
+                    </div>
+                </div>
+                <button id="retryBtn">↻ Run Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const canvas = document.getElementById('c');
+            const ctx = canvas.getContext('2d');
+            const wrap = document.getElementById('wrap');
+            const scoreEl = document.getElementById('score');
+            const bestEl = document.getElementById('best');
+            const startScreen = document.getElementById('startScreen');
+            const overScreen = document.getElementById('overScreen');
+            const finalScoreEl = document.getElementById('finalScore');
+            const bestScoreLineEl = document.getElementById('bestScoreLine');
+            const coinLineEl = document.getElementById('coinLine');
+            const startBtn = document.getElementById('startBtn');
+            const retryBtn = document.getElementById('retryBtn');
+            const homeScreen = document.getElementById('homeScreen');
+            const supportScreen = document.getElementById('supportScreen');
+            const walletScreen = document.getElementById('walletScreen');
+            const lifeScreen = document.getElementById('lifeScreen');
+            const homePlayBtn = document.getElementById('homePlayBtn');
+            const supportBtn = document.getElementById('supportBtn');
+            const walletBtn = document.getElementById('walletBtn');
+            const supportBackBtn = document.getElementById('supportBackBtn');
+            const walletBackBtn = document.getElementById('walletBackBtn');
+            const useLifeBtn = document.getElementById('useLifeBtn');
+            const buyLifeBtn = document.getElementById('buyLifeBtn');
+            const waitLifeBtn = document.getElementById('waitLifeBtn');
+            const lifeHomeBtn = document.getElementById('lifeHomeBtn');
+            const homeLives = document.getElementById('homeLives');
+            const homeSats = document.getElementById('homeSats');
+            const homeTimer = document.getElementById('homeTimer');
+            const rewardPoolStatus = document.getElementById('rewardPoolStatus');
+            const lifeStatus = document.getElementById('lifeStatus');
+            const lifeTimer = document.getElementById('lifeTimer');
+            const walletGameSats = document.getElementById('walletGameSats');
+            const walletPoints = document.getElementById('walletPoints');
+            const walletReward = document.getElementById('walletReward');
+            const tipMessage = document.getElementById('tipMessage'); const streakEl = document.getElementById('streak');
+            const lightningEl = document.getElementById('lightning');
+            const quizScreen = document.getElementById('quizScreen');
+            const quizQuestionEl = document.getElementById('quizQuestion');
+            const quizAnswersEl = document.getElementById('quizAnswers');
+            const quizFeedbackEl = document.getElementById('quizFeedback');
+            const finalLightningEl = document.getElementById('finalLightning');
+            const rewardPointsEl = document.getElementById('rewardPoints');
+
+            let lightningCharge = 0;
+            let satsCollected = 0;
+            let rewardPoints = 0;
+
+            const STORE_KEY = 'sat_sprint_player_v3';
+            const defaultPlayer = {
+                lives: 10,
+                gameSats: 0,
+                totalRuns: 0,
+                best: 0,
+                lastLifeRefill: 0,
+                developerTips: 0,
+                virtualRewardBalance: 0
+            };
+            let account = { ...defaultPlayer };
+            try { account = { ...defaultPlayer, ...(JSON.parse(localStorage.getItem(STORE_KEY)) || {}) }; } catch (e) { }
+            function savePlayer() { localStorage.setItem(STORE_KEY, JSON.stringify(account)); }
+            function refillLives() {
+                const now = Date.now();
+                if (account.lives >= 10) { account.lastLifeRefill = 0; return; }
+                if (!account.lastLifeRefill) account.lastLifeRefill = now;
+                const gained = Math.floor((now - account.lastLifeRefill) / (20 * 60 * 1000));
+                if (gained > 0) {
+                    account.lives = Math.min(10, account.lives + gained);
+                    account.lastLifeRefill += gained * 20 * 60 * 1000;
+                    if (account.lives >= 10) account.lastLifeRefill = 0;
+                    savePlayer();
+                }
+            }
+            function nextLifeSeconds() {
+                refillLives();
+                if (account.lives >= 10 || !account.lastLifeRefill) return 0;
+                return Math.max(0, Math.ceil((20 * 60 * 1000 - (Date.now() - account.lastLifeRefill)) / 1000));
+            }
+            function fmtTime(s) {
+                const m = Math.floor(s / 60), sec = s % 60;
+                return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+            }
+            let quizTimer = 0;
+            let quizStreak = 0;
+            let lightningMode = 0;
+
+            const quizBank = [
+                { q: 'What is a sat?', a: ['A mining machine', 'The smallest unit of bitcoin', 'A Bitcoin block'], correct: 1 },
+                { q: 'What does Lightning primarily enable?', a: ['Faster Bitcoin payments', 'Free bitcoin forever', 'Mining on a phone'], correct: 0 },
+                { q: 'What is a block?', a: ['A wallet password', 'A batch of Bitcoin transactions', 'A type of Lightning bolt'], correct: 1 },
+                { q: 'Who can run a Bitcoin node?', a: ['Only miners', 'Anyone with suitable software and resources', 'Only exchanges'], correct: 1 },
+                { q: 'What happens at a Bitcoin halving?', a: ['Block subsidy is reduced', 'All wallets reset', 'Bitcoin stops'], correct: 0 }
+            ];
+
+
+            let W, H, DPR;
+            function resize() {
+                const rect = wrap.getBoundingClientRect();
+                DPR = Math.min(window.devicePixelRatio || 1, 2);
+                W = rect.width; H = rect.height;
+                canvas.width = W * DPR;
+                canvas.height = H * DPR;
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            // ---------- persistent best score ----------
+            let best = 0;
+            async function loadBest() {
+                try {
+                    const r = await window.storage.get('sat_sprint_best', false);
+                    if (r && r.value) { best = JSON.parse(r.value).best || 0; }
+                } catch (e) { best = 0; }
+                bestEl.textContent = '🏆 BEST ' + best + 'm';
+            }
+            async function saveBest(v) {
+                try { await window.storage.set('sat_sprint_best', JSON.stringify({ best: v }), false); } catch (e) { }
+            }
+            loadBest();
+
+            // ---------- game constants ----------
+            const GROUND_Y_RATIO = 0.78;
+            const GRAVITY = 2200;
+            const JUMP_V = -760;
+            const DOUBLE_JUMP_V = -650;
+            let baseSpeed = 260;
+
+            let state = 'start'; // start, playing, dead
+            let gamePlayer, obstacles, coins, particles, groundY;
+            let distance = 0, coinCount = 0, elapsed = 0, speed = baseSpeed;
+            let spawnTimer = 0, nextSpawnAt = 0;
+            let hillOffset1 = 0, hillOffset2 = 0;
+            let shakeT = 0;
+
+            function resetGame() {
+                groundY = H * GROUND_Y_RATIO;
+                gamePlayer = {
+                    x: W * 0.24, y: groundY - 40, w: 40, h: 40,
+                    vy: 0, onGround: true, jumps: 0, maxJumps: 2,
+                    squash: 1, rot: 0
+                };
+                obstacles = [];
+                coins = [];
+                particles = [];
+                distance = 0; coinCount = 0; elapsed = 0; speed = baseSpeed;
+                lightningCharge = 0; satsCollected = 0; rewardPoints = 0; lightningMode = 0; quizTimer = 0;
+                streakEl.textContent = '🔥 ' + quizStreak; lightningEl.textContent = '⚡ 0%';
+                spawnTimer = 0; nextSpawnAt = 0.9;
+            }
+
+            function jump() {
+                if (state !== 'playing') return;
+                if (gamePlayer.jumps < gamePlayer.maxJumps) {
+                    gamePlayer.vy = gamePlayer.jumps === 0 ? JUMP_V : DOUBLE_JUMP_V;
+                    gamePlayer.jumps++;
+                    gamePlayer.onGround = false;
+                    gamePlayer.squash = 1.3;
+                    spawnBurst(gamePlayer.x + gamePlayer.w / 2, gamePlayer.y + gamePlayer.h, '#ffffff', 5, true);
+                }
+            }
+
+            function spawnBurst(x, y, color, count, small) {
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x, y,
+                        vx: (Math.random() - 0.5) * 220,
+                        vy: -Math.random() * 220 - 40,
+                        life: 0.5 + Math.random() * 0.3,
+                        t: 0,
+                        color,
+                        r: small ? 2 + Math.random() * 2 : 3 + Math.random() * 3
+                    });
+                }
+            }
+
+            function startGame() {
+                resetGame();
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                state = 'playing';
+                startScreen.classList.add('hidden');
+                overScreen.classList.add('hidden');
+            }
+
+            function endGame() {
+                if (window.satSprintClearSavedRun) window.satSprintClearSavedRun();
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                state = 'dead';
+                shakeT = 0.35;
+                spawnBurst(gamePlayer.x + gamePlayer.w / 2, gamePlayer.y + gamePlayer.h / 2, '#ff5d5d', 18, false);
+                const d = Math.floor(distance);
+                finalScoreEl.textContent = d;
+                coinLineEl.textContent = satsCollected + ' sats';
+                finalLightningEl.textContent = Math.floor(lightningCharge) + '%';
+                rewardPointsEl.textContent = rewardPoints;
+                const virtualReward = Math.floor(Math.min(250, rewardPoints / 20));
+                account.virtualRewardBalance += virtualReward;
+                account.gameSats += satsCollected;
+                savePlayer();
+                let isNew = false;
+                if (d > best) { best = d; isNew = true; saveBest(best); bestEl.textContent = '🏆 BEST ' + best + 'm'; }
+                bestScoreLineEl.innerHTML = best + (isNew ? '<span id="newbest">NEW!</span>' : '');
+                setTimeout(() => { overScreen.classList.remove('hidden'); }, 500);
+            }
+
+            function maybeQuiz(dt) {
+                if (state !== 'playing') return;
+                quizTimer += dt;
+                if (quizTimer > 32 && quizScreen.classList.contains('hidden')) {
+                    quizTimer = 0;
+                    pauseForQuiz();
+                }
+            }
+
+            function pauseForQuiz() {
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                state = 'quiz';
+                const q = quizBank[Math.floor(Math.random() * quizBank.length)];
+                quizQuestionEl.textContent = q.q;
+                quizAnswersEl.innerHTML = '';
+                quizFeedbackEl.textContent = '';
+                q.a.forEach((answer, i) => {
+                    const b = document.createElement('button');
+                    b.textContent = answer;
+                    b.onclick = () => {
+                        if (i === q.correct) {
+                            quizStreak++;
+                            rewardPoints += 250;
+                            lightningCharge = Math.min(100, lightningCharge + 25);
+                            quizFeedbackEl.textContent = '✓ Correct! +250 reward points';
+                            quizFeedbackEl.style.color = '#22c55e';
+                        } else {
+                            quizStreak = 0;
+                            quizFeedbackEl.textContent = 'Not quite — keep learning!';
+                            quizFeedbackEl.style.color = '#f97316';
+                        }
+                        streakEl.textContent = '🔥 ' + quizStreak;
+                        setTimeout(() => {
+                            quizScreen.classList.add('hidden');
+                            state = 'playing';
+                        }, 750);
+                    };
+                    quizAnswersEl.appendChild(b);
+                });
+                quizScreen.classList.remove('hidden');
+            }
+
+            function updateHomeUI() {
+                refillLives();
+                homeLives.textContent = account.lives + ' / 10';
+                homeSats.textContent = account.gameSats;
+                walletGameSats.textContent = account.gameSats;
+                walletPoints.textContent = rewardPoints;
+                walletReward.textContent = account.virtualRewardBalance + ' sats';
+                const sec = nextLifeSeconds();
+                homeTimer.textContent = sec ? 'Next free life in ' + fmtTime(sec) : '';
+            }
+            function showHome() {
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                state = 'home';
+                [startScreen, overScreen, quizScreen, lifeScreen, supportScreen, walletScreen].forEach(x => x.classList.add('hidden'));
+                homeScreen.classList.remove('hidden');
+                updateHomeUI();
+            }
+            function startFromHome() {
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                refillLives();
+                if (account.lives <= 0) {
+                    openLifeScreen();
+                    return;
+                }
+                account.lives--;
+                account.totalRuns++;
+                savePlayer();
+                homeScreen.classList.add('hidden');
+                resetGame();
+                state = 'playing';
+                startScreen.classList.add('hidden');
+            }
+            function openLifeScreen() {
+                [homeScreen, startScreen, overScreen, quizScreen, supportScreen, walletScreen].forEach(x => x.classList.add('hidden'));
+                lifeScreen.classList.remove('hidden');
+                updateLifeUI();
+            }
+            function updateLifeUI() {
+                refillLives();
+                lifeStatus.textContent = account.lives > 0 ? `You have ${account.lives} lives left.` : 'No free lives left.';
+                useLifeBtn.disabled = account.lives <= 0;
+                buyLifeBtn.disabled = account.gameSats < 25;
+                const sec = nextLifeSeconds();
+                lifeTimer.textContent = sec ? 'Free revival in ' + fmtTime(sec) : (gamePlayer.lives < 10 ? 'A free life is ready.' : '');
+                homeTimer.textContent = sec ? 'Next free life in ' + fmtTime(sec) : '';
+            }
+            homePlayBtn.onclick = startFromHome;
+            supportBtn.onclick = () => { homeScreen.classList.add('hidden'); supportScreen.classList.remove('hidden'); };
+            walletBtn.onclick = () => { homeScreen.classList.add('hidden'); walletScreen.classList.remove('hidden'); updateHomeUI(); };
+            supportBackBtn.onclick = showHome;
+            walletBackBtn.onclick = showHome;
+            lifeHomeBtn.onclick = showHome;
+            waitLifeBtn.onclick = () => {
+                updateLifeUI();
+                if (account.lives > 0) { lifeScreen.classList.add('hidden'); startFromHome(); }
+            };
+            useLifeBtn.onclick = () => {
+                if (account.lives > 0) {
+                    account.lives--; savePlayer();
+                    lifeScreen.classList.add('hidden');
+                    resetGame(); state = 'playing';
+                }
+            };
+            buyLifeBtn.onclick = () => {
+                if (account.gameSats >= 25) {
+                    account.gameSats -= 25; account.lives++;
+                    savePlayer(); updateLifeUI(); updateHomeUI();
+                    lifeTimer.textContent = '❤️ Life purchased! Press Use 1 Life to run again.';
+                }
+            };
+            setInterval(() => { updateHomeUI(); if (!lifeScreen.classList.contains('hidden')) updateLifeUI(); }, 1000);
+
+            // input
+            function onPress(e) {
+                if (e) { e.preventDefault(); }
+                if (state === 'playing') jump();
+            }
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' || e.code === 'ArrowUp') { onPress(e); }
+            });
+            canvas.addEventListener('pointerdown', onPress);
+            startBtn.addEventListener('click', startGame);
+            retryBtn.addEventListener('click', startGame);
+
+            // ---------- obstacle / coin generation ----------
+            function spawnObstacle() {
+                const type = Math.random();
+                const gh = 34 + Math.random() * 22;
+                if (type < 0.55) {
+                    // spike (ground obstacle)
+                    obstacles.push({ kind: 'spike', x: W + 40, y: groundY, w: 30, h: gh, passed: false });
+                } else {
+                    // gap
+                    const gw = 70 + Math.random() * 50;
+                    obstacles.push({ kind: 'gap', x: W + 40, w: gw, passed: false });
+                }
+                // chance to spawn a Lightning power-up
+                if (Math.random() < 0.22) {
+                    coins.push({ x: W + 80, y: groundY - 150, r: 14, taken: false, bob: Math.random() * Math.PI * 2, lightning: true });
+                }
+
+                // chance to spawn a sat arc above
+                if (Math.random() < 0.7) {
+                    const baseX = W + 60;
+                    const cnt = 3 + Math.floor(Math.random() * 3);
+                    for (let i = 0; i < cnt; i++) {
+                        coins.push({
+                            x: baseX + i * 34,
+                            y: groundY - 90 - Math.sin(i / (cnt - 1) * Math.PI) * 50,
+                            r: 10, taken: false, bob: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+            }
+
+            // ---------- update ----------
+            function update(dt) {
+                elapsed += dt;
+                maybeQuiz(dt);
+                speed = baseSpeed + elapsed * 7; // ramps up over time
+                if (lightningMode > 0) { lightningMode -= dt; lightningCharge = 100; }
+                distance += speed * dt * 0.05;
+                scoreEl.textContent = '⚡ ' + Math.floor(satsCollected) + ' sats  •  ' + Math.floor(distance) + 'm';
+                lightningEl.textContent = '⚡ ' + Math.floor(lightningCharge) + '%' + (lightningMode > 0 ? '  2×' : '');
+
+                hillOffset1 -= speed * 0.15 * dt;
+                hillOffset2 -= speed * 0.3 * dt;
+
+                // is the gamePlayer currently over an open gap?
+                const pCenterX = gamePlayer.x + gamePlayer.w / 2;
+                let overGap = false;
+                for (const o of obstacles) {
+                    if (o.kind === 'gap' && pCenterX > o.x + 8 && pCenterX < o.x + o.w - 8) { overGap = true; break; }
+                }
+
+                // gamePlayer physics
+                gamePlayer.vy += GRAVITY * dt;
+                gamePlayer.y += gamePlayer.vy * dt;
+                if (!overGap && gamePlayer.y + gamePlayer.h >= groundY) {
+                    gamePlayer.y = groundY - gamePlayer.h;
+                    if (!gamePlayer.onGround && gamePlayer.vy > 0) {
+                        gamePlayer.squash = 0.7;
+                    }
+                    gamePlayer.vy = 0;
+                    gamePlayer.onGround = true;
+                    gamePlayer.jumps = 0;
+                } else {
+                    gamePlayer.onGround = false;
+                    if (overGap && gamePlayer.y + gamePlayer.h >= groundY + 30) {
+                        endGame(); return;
+                    }
+                }
+                gamePlayer.squash += (1 - gamePlayer.squash) * Math.min(1, dt * 10);
+
+                // spawn
+                spawnTimer += dt;
+                if (spawnTimer > nextSpawnAt) {
+                    spawnTimer = 0;
+                    nextSpawnAt = Math.max(0.55, 1.3 - elapsed * 0.01) + Math.random() * 0.5;
+                    spawnObstacle();
+                }
+
+                // obstacles move
+                for (const o of obstacles) { o.x -= speed * dt; }
+                obstacles = obstacles.filter(o => o.x + (o.w || 0) > -60);
+
+                // coins move + bob
+                for (const c of coins) {
+                    c.x -= speed * dt;
+                    c.bob += dt * 6;
+                }
+                coins = coins.filter(c => c.x > -40);
+
+                // collisions
+                const px = gamePlayer.x, py = gamePlayer.y, pw = gamePlayer.w, ph = gamePlayer.h;
+                for (const o of obstacles) {
+                    if (o.kind === 'spike') {
+                        const ox = o.x, ow = o.w, oy = groundY - o.h, oh = o.h;
+                        if (px < ox + ow - 6 && px + pw > ox + 6 && py + ph > oy + 8) {
+                            endGame(); return;
+                        }
+                    }
+                }
+
+                // coin collection
+                for (const c of coins) {
+                    if (c.taken) continue;
+                    const dx = (px + pw / 2) - c.x, dy = (py + ph / 2) - (c.y + Math.sin(c.bob) * 6);
+                    if (Math.sqrt(dx * dx + dy * dy) < c.r + pw * 0.35) {
+                        c.taken = true;
+                        if (c.lightning) {
+                            lightningCharge = 100;
+                            lightningMode = 6;
+                            rewardPoints += 100;
+                            spawnBurst(c.x, c.y, '#7dd3fc', 18, true);
+                        } else {
+                            coinCount++;
+                            const earned = 1 + Math.floor(elapsed / 25);
+                            satsCollected += earned;
+                            account.gameSats += earned;
+                            lightningCharge = Math.min(100, lightningCharge + 8);
+                            rewardPoints += 10;
+                            spawnBurst(c.x, c.y, '#ffb300', 8, true);
+                        }
+                    }
+                }
+                coins = coins.filter(c => !c.taken);
+
+                // particles
+                for (const p of particles) {
+                    p.t += dt;
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 900 * dt;
+                }
+                particles = particles.filter(p => p.t < p.life);
+
+                if (shakeT > 0) shakeT -= dt;
+            }
+
+            // ---------- draw ----------
+            function drawBackground() {
+                const g = ctx.createLinearGradient(0, 0, 0, H);
+                g.addColorStop(0, '#0b1220');
+                g.addColorStop(1, '#3b2415');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, W, H);
+
+                // sun
+                ctx.fillStyle = 'rgba(247,147,26,0.9)';
+                ctx.beginPath(); ctx.arc(W * 0.82, H * 0.18, 34, 0, Math.PI * 2); ctx.fill();
+
+                // far hills
+                ctx.fillStyle = '#263442';
+                drawHillRow(hillOffset1, H * 0.62, 70, groundY);
+                // near hills
+                ctx.fillStyle = '#1b2835';
+                drawHillRow(hillOffset2, H * 0.7, 46, groundY);
+
+                // ground
+                ctx.fillStyle = '#171717';
+                ctx.fillRect(0, groundY, W, H - groundY);
+                ctx.fillStyle = '#f7931a';
+                ctx.fillRect(0, groundY, W, 10);
+            }
+
+            function drawHillRow(offset, baseY, amp, bottomY) {
+                const period = 160;
+                ctx.beginPath();
+                ctx.moveTo(0, bottomY + 2);
+                let x = (offset % period) - period;
+                while (x < W + period) {
+                    ctx.quadraticCurveTo(x + period / 2, baseY - amp, x + period, baseY);
+                    x += period;
+                }
+                ctx.lineTo(W, bottomY + 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function drawGaps() {
+                for (const o of obstacles) {
+                    if (o.kind === 'gap') {
+                        ctx.fillStyle = '#2b2320';
+                        ctx.fillRect(o.x, groundY, o.w, H - groundY);
+                    }
+                }
+            }
+
+            function drawSpikes() {
+                for (const o of obstacles) {
+                    if (o.kind === 'spike') {
+                        const baseY = groundY;
+                        const n = Math.max(1, Math.round(o.w / 16));
+                        const step = o.w / n;
+                        ctx.fillStyle = '#e0453f';
+                        for (let i = 0; i < n; i++) {
+                            const sx = o.x + i * step;
+                            ctx.beginPath();
+                            ctx.moveTo(sx, baseY);
+                            ctx.lineTo(sx + step / 2, baseY - o.h);
+                            ctx.lineTo(sx + step, baseY);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            function drawCoins() {
+                for (const c of coins) {
+                    const y = c.y + Math.sin(c.bob) * 6;
+                    ctx.save();
+                    ctx.translate(c.x, y);
+                    const squeeze = Math.abs(Math.cos(c.bob * 0.7));
+                    ctx.scale(0.4 + 0.6 * squeeze, 1);
+                    ctx.fillStyle = c.lightning ? '#38bdf8' : '#ffb300';
+                    ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = c.lightning ? '#0c4a6e' : '#d18a00';
+                    ctx.beginPath(); ctx.arc(0, 0, c.r * 0.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold ' + Math.max(11, c.r * 0.95) + 'px Arial';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(c.lightning ? '⚡' : '₿', 0, 1);
+                    ctx.restore();
+                }
+            }
+
+            function drawPlayer() {
+                if (state === 'dead' && shakeT <= 0) { return; }
+                ctx.save();
+                const cx = gamePlayer.x + gamePlayer.w / 2;
+                const cy = gamePlayer.y + gamePlayer.h / 2;
+                ctx.translate(cx, cy);
+                const sq = gamePlayer.squash;
+                ctx.scale(1 / sq, sq);
+                // Bitcoin character
+                ctx.fillStyle = lightningMode > 0 ? '#38bdf8' : '#c96b0c';
+                ctx.beginPath(); ctx.arc(2, 3, gamePlayer.w / 2 + 2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#f7931a';
+                ctx.beginPath(); ctx.arc(0, 0, gamePlayer.w / 2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 25px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('₿', 0, 1);
+                // tiny feet
+                ctx.fillStyle = '#9a4e0b';
+                ctx.beginPath(); ctx.ellipse(-9, gamePlayer.w / 2 - 2, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(9, gamePlayer.w / 2 - 2, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+                if (lightningMode > 0) {
+                    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(0, 0, gamePlayer.w / 2 + 8, -0.8, 1.8); ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            function drawParticles() {
+                for (const p of particles) {
+                    const a = 1 - p.t / p.life;
+                    ctx.globalAlpha = Math.max(0, a);
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            function render() {
+                ctx.save();
+                if (shakeT > 0) {
+                    const s = shakeT * 40;
+                    ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
+                }
+                drawBackground();
+                drawGaps();
+                drawSpikes();
+                drawCoins();
+                drawPlayer();
+                drawParticles();
+                ctx.restore();
+            }
+
+            // ---------- main loop ----------
+            let last = performance.now();
+            function loop(now) {
+                const dt = Math.min(0.033, (now - last) / 1000);
+                last = now;
+                if (state === 'playing') {
+                    update(dt);
+                } else if (state === 'dead') {
+                    // let particles/shake settle
+                    for (const p of particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; }
+                    particles = particles.filter(p => p.t < p.life);
+                    if (shakeT > 0) shakeT -= dt;
+                }
+                render();
+                requestAnimationFrame(loop);
+            }
+
+            // init idle scene
+            groundY = H * GROUND_Y_RATIO;
+            gamePlayer = { x: W * 0.24, y: groundY - 40, w: 40, h: 40, vy: 0, onGround: true, jumps: 0, maxJumps: 2, squash: 1 };
+            obstacles = []; coins = []; particles = [];
+            requestAnimationFrame(loop);
+
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const gameControls = document.getElementById('gameControls');
+            const tipPrompt = document.getElementById('tipPrompt');
+            const pauseScreen = document.getElementById('pauseScreen');
+            const menuDuringGame = document.getElementById('menuDuringGame');
+            const tipDuringGame = document.getElementById('tipDuringGame');
+            const openTipFromPrompt = document.getElementById('openTipFromPrompt');
+            const continueBtn = document.getElementById('continueBtn');
+            const exitRunBtn = document.getElementById('exitRunBtn');
+
+            function showTip() {
+                [homeScreen, walletScreen, lifeScreen, overScreen, startScreen, quizScreen].forEach(x => x && x.classList.add('hidden'));
+                pauseScreen.classList.add('hidden');
+                supportScreen.classList.remove('hidden');
+            }
+
+            function setGameplayUI(on) {
+                gameControls.style.display = on ? 'flex' : 'none';
+                tipPrompt.style.display = on ? 'block' : 'none';
+            }
+
+            menuDuringGame.onclick = function () {
+                if (typeof state !== 'undefined' && state === 'playing') {
+                    state = 'paused';
+                    pauseScreen.classList.remove('hidden');
+                    tipPrompt.style.display = 'none';
+                }
+            };
+
+            continueBtn.onclick = function () {
+                pauseScreen.classList.add('hidden');
+                if (typeof state !== 'undefined') state = 'playing';
+                tipPrompt.style.display = 'block';
+            };
+
+            exitRunBtn.onclick = function () {
+                pauseScreen.classList.add('hidden');
+                if (typeof state !== 'undefined') state = 'home';
+                setGameplayUI(false);
+                if (typeof showHome === 'function') showHome();
+            };
+
+            tipDuringGame.onclick = showTip;
+            openTipFromPrompt.onclick = showTip;
+
+            // Expose for the game loop.
+            window.satSprintSetGameplayUI = setGameplayUI;
+        })();
+    </script>
+
+    <script>
+        (function () {
+            window.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && typeof state !== 'undefined' && state === 'playing') {
+                    document.getElementById('menuDuringGame')?.click();
+                }
+            });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const KEY = 'sat_sprint_saved_run_v4';
+            const toast = document.getElementById('saveToast');
+            const resumeScreen = document.getElementById('saveResumeScreen');
+            const savedScore = document.getElementById('savedScore');
+            const savedSats = document.getElementById('savedSats');
+            const savedCharge = document.getElementById('savedCharge');
+
+            function showToast() {
+                if (!toast) return;
+                toast.style.display = 'block';
+                clearTimeout(window.__satToast);
+                window.__satToast = setTimeout(() => toast.style.display = 'none', 1100);
+            }
+
+            window.satSprintSaveRun = function (reason) {
+                try {
+                    if (typeof state === 'undefined' || state !== 'playing') return false;
+                    const snapshot = {
+                        score: Number(typeof score !== 'undefined' ? score : 0),
+                        sats: Number(typeof satsCollected !== 'undefined' ? satsCollected : 0),
+                        charge: Number(typeof lightningCharge !== 'undefined' ? lightningCharge : 0),
+                        elapsed: Number(typeof elapsed !== 'undefined' ? elapsed : 0),
+                        savedAt: Date.now(),
+                        reason: reason || 'pause'
+                    };
+                    localStorage.setItem(KEY, JSON.stringify(snapshot));
+                    showToast();
+                    return true;
+                } catch (e) { console.warn('Could not save run', e); return false; }
+            };
+
+            window.satSprintGetSavedRun = function () {
+                try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) { return null }
+            };
+
+            window.satSprintClearSavedRun = function () {
+                localStorage.removeItem(KEY);
+            };
+
+            window.satSprintShowSavedRun = function () {
+                const r = window.satSprintGetSavedRun();
+                if (!r) return false;
+                savedScore.textContent = Math.floor(r.score).toLocaleString();
+                savedSats.textContent = Math.floor(r.sats).toLocaleString();
+                savedCharge.textContent = Math.floor(r.charge) + '%';
+                resumeScreen.classList.remove('hidden');
+                return true;
+            };
+
+            window.satSprintResumeSaved = function () {
+                const r = window.satSprintGetSavedRun();
+                if (!r) return;
+                resumeScreen.classList.add('hidden');
+                if (typeof resetGame === 'function') resetGame();
+                if (typeof score !== 'undefined') score = r.score;
+                if (typeof satsCollected !== 'undefined') satsCollected = r.sats;
+                if (typeof lightningCharge !== 'undefined') lightningCharge = r.charge;
+                if (typeof elapsed !== 'undefined') elapsed = r.elapsed;
+                if (typeof state !== 'undefined') state = 'playing';
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                window.satSprintClearSavedRun();
+            };
+
+            document.getElementById('resumeSavedBtn').onclick = window.satSprintResumeSaved;
+            document.getElementById('discardSavedBtn').onclick = function () {
+                window.satSprintClearSavedRun();
+                resumeScreen.classList.add('hidden');
+            };
+
+            // Save when the browser/tab is backgrounded.
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden && typeof state !== 'undefined' && state === 'playing') {
+                    window.satSprintSaveRun('background');
+                    state = 'paused';
+                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                }
+            });
+
+            // If there is a saved run on page load, offer to continue.
+            window.addEventListener('load', function () {
+                setTimeout(function () {
+                    if (window.satSprintGetSavedRun()) window.satSprintShowSavedRun();
+                }, 250);
+            });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const supportScreen = document.getElementById('supportScreen');
+            const pauseScreen = document.getElementById('pauseScreen');
+            const menuBtn = document.getElementById('menuDuringGame');
+            const giftBtn = document.getElementById('tipDuringGame');
+            const giftPrompt = document.getElementById('openTipFromPrompt');
+            const continueBtn = document.getElementById('continueBtn');
+            const exitBtn = document.getElementById('exitRunBtn');
+            const supportBack = document.getElementById('supportBackBtn');
+
+            function openGift() {
+                if (typeof state !== 'undefined' && state === 'playing') {
+                    window.satSprintSaveRun('developer_tip');
+                    state = 'paused';
+                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                }
+                supportScreen.classList.remove('hidden');
+            }
+
+            function closeGift() {
+                supportScreen.classList.add('hidden');
+                const saved = window.satSprintGetSavedRun();
+                if (saved) {
+                    // Resume the exact saved snapshot after the modal closes.
+                    window.satSprintResumeSaved();
+                }
+            }
+
+            if (giftBtn) giftBtn.onclick = openGift;
+            if (giftPrompt) giftPrompt.onclick = openGift;
+
+            if (supportBack) supportBack.onclick = closeGift;
+
+            if (menuBtn) menuBtn.onclick = function () {
+                if (typeof state !== 'undefined' && state === 'playing') {
+                    window.satSprintSaveRun('menu');
+                    state = 'paused';
+                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                    pauseScreen.classList.remove('hidden');
+                }
+            };
+
+            if (continueBtn) continueBtn.onclick = function () {
+                pauseScreen.classList.add('hidden');
+                const saved = window.satSprintGetSavedRun();
+                if (saved) window.satSprintResumeSaved();
+                else {
+                    if (typeof state !== 'undefined') state = 'playing';
+                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                }
+            };
+
+            if (exitBtn) exitBtn.onclick = function () {
+                pauseScreen.classList.add('hidden');
+                window.satSprintClearSavedRun();
+                if (typeof state !== 'undefined') state = 'home';
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                if (typeof showHome === 'function') showHome();
+            };
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const address = 'mugoiri@blink.sv';
+            const addressEl = document.getElementById('blinkAddress');
+            const copyBtn = document.getElementById('copyBlinkAddress');
+            const status = document.getElementById('copyStatus');
+
+            if (addressEl) addressEl.textContent = address;
+
+            if (copyBtn) {
+                copyBtn.type = 'button';
+                copyBtn.addEventListener('click', async function () {
+                    try {
+                        await navigator.clipboard.writeText(address);
+                        copyBtn.textContent = '✓ Copied';
+                        if (status) status.textContent = 'Copied — paste it into your Lightning wallet.';
+                        setTimeout(() => copyBtn.textContent = '📋 Copy Lightning Address', 1600);
+                    } catch (e) {
+                        if (status) status.textContent = address;
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+
+</html>
