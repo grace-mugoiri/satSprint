@@ -64,4 +64,30 @@ Your progress can be resumed instead of losing the current run.
 - Render
 
 ## 🚀 Running Locally
-Purely For Educational purposes
+Purely for educational purposes.
+
+### Frontend
+Open `index.html` in a browser or serve the project folder from a simple static server.
+
+### Backend stub
+A minimal backend is available in `backend/` for live high-score and saved-run sync.
+
+1. Change to the backend folder:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the server:
+   ```bash
+   npm start
+   ```
+4. Open `http://localhost:3000` in a browser.
+
+The backend serves `index.html` and the `js/` assets automatically, while exposing:
+- `GET /api/high-scores`
+- `POST /api/high-scores`
+- `GET /api/run-snapshots`
+- `POST /api/run-snapshot`

@@ -1,0 +1,15 @@
+{
+    "highScores": [
+        {
+            "name": "musa",
+            "score": 35,
+            "savedAt": 1785927151080
+        },
+        {
+            "name": "karen",
+            "score": 31,
+            "savedAt": 1785927173827
+        }
+    ],
+    "runSnapshots": []
+}
