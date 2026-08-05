@@ -4,12 +4,15 @@ const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
 
+const cors = require('cors');
 const app = express();
 const dataPath = path.join(__dirname, 'data.json');
 const rootPath = path.join(__dirname, '..');
 
 app.use(express.json());
 app.use(express.static(rootPath));
+// Allow CORS for development; in production lock this down to allowed origins.
+app.use(cors());
 
 let data = { highScores: [], runSnapshots: [] };
 try {
@@ -37,6 +40,11 @@ app.get('/api/high-scores', (req, res) => {
 
 app.get('/api/run-snapshots', (req, res) => {
     res.json(data.runSnapshots.slice(0, 50));
+});
+
+app.get('/api/active-players', (req, res) => {
+    const players = (wss && wss.activePlayers) ? Object.values(wss.activePlayers) : [];
+    res.json(players);
 });
 
 // Helper to broadcast to connected websocket clients
@@ -78,6 +86,25 @@ app.post('/api/high-scores', (req, res) => {
     res.json({ ok: true });
 });
 
+// Admin cleanup endpoint: remove entries matching a predicate or clear all
+app.post('/api/high-scores/cleanup', (req, res) => {
+    const token = req.get('x-admin-token') || req.body.adminToken || process.env.ADMIN_TOKEN || '';
+    if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+        return res.status(403).json({ error: 'forbidden' });
+    }
+    const mode = req.body && req.body.mode ? req.body.mode : 'remove-test';
+    if (mode === 'clear-all') {
+        data.highScores = [];
+    } else {
+        // default: remove entries with name containing TEST or test
+        data.highScores = (data.highScores || []).filter(e => !/test/i.test(e.name));
+    }
+    persistData();
+    // broadcast updated list
+    broadcastWS({ type: 'high_scores', data: data.highScores.slice(0, 50) });
+    res.json({ ok: true, mode, count: data.highScores.length });
+});
+
 app.post('/api/run-snapshot', (req, res) => {
     const body = req.body;
     if (!body || body.type !== 'run_snapshot' || typeof body.payload !== 'object') {
@@ -94,7 +121,7 @@ app.post('/api/run-snapshot', (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-const host = process.env.BIND_ADDR || '127.0.0.1';
+const host = process.env.BIND_ADDR || '0.0.0.0';
 const server = http.createServer(app);
 
 // Attach WebSocket server

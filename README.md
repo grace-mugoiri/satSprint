@@ -91,3 +91,44 @@ The backend serves `index.html` and the `js/` assets automatically, while exposi
 - `POST /api/high-scores`
 - `GET /api/run-snapshots`
 - `POST /api/run-snapshot`
+
+Additional helpful endpoints for real-time testing:
+- `GET /api/active-players` — returns currently connected players (for diagnostics).
+
+Testing across devices (LAN or internet):
+
+- LAN: start the backend bound to all interfaces and use your machine IP. Example:
+   ```bash
+   cd backend
+   BIND_ADDR=0.0.0.0 npm start
+   ```
+   Then in another device's browser set the WS URL before loading the game:
+   ```js
+   window.SAT_SPRINT_WS_URL = 'ws://<SERVER_IP>:3000/ws'
+   location.reload();
+   ```
+
+- Quick internet tunnel: use `ngrok` to expose your local port (good for remote testing):
+   ```bash
+   ngrok http 3000
+   ```
+   Then use the provided HTTPS host and set `window.SAT_SPRINT_WS_URL` to `wss://<NGROK_HOST>/ws` and reload the page on each device.
+
+Security note: these are development convenience steps. For production, host the backend on a secure public host with TLS and proper authentication.
+
+Admin cleanup (remove test data)
+
+You can remove test entries remotely using the admin cleanup endpoint. First set an admin token in the environment on the server:
+
+```bash
+export ADMIN_TOKEN="your-secret-token"
+BIND_ADDR=0.0.0.0 npm start
+```
+
+Then call the cleanup endpoint from a trusted machine:
+
+```bash
+curl -X POST https://<SERVER>/api/high-scores/cleanup -H "Content-Type: application/json" -d '{"mode":"remove-test"}' -H "x-admin-token: your-secret-token"
+```
+
+Use `mode: clear-all` to wipe the leaderboard (be careful).
