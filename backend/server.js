@@ -9,24 +9,44 @@ const app = express();
 const dataPath = path.join(__dirname, 'data.json');
 const rootPath = path.join(__dirname, '..');
 
-app.use(express.json());
-app.use((req, res, next) => {
-    const normalized = decodeURIComponent(req.path).replace(/\\/g, '/').toLowerCase();
-    const forbidden = [
-        '/backend', '/backend/', '/backend/server.js', '/backend/data.json',
-        '/readme.md', '/package.json', '/package-lock.json', '/.git', '/.git/', '/.gitignore'
-    ];
-    if (forbidden.some(f => normalized === f || normalized.startsWith(f + '/'))) {
-        return res.status(404).end();
-    }
-    if (normalized.includes('..') || path.basename(normalized).startsWith('.')) {
-        return res.status(404).end();
-    }
-    next();
-});
-app.use(express.static(rootPath));
-// Allow CORS for development; in production lock this down to allowed origins.
+app.use(express.json({ limit: '64kb' }));
 app.use(cors());
+
+// ============================================================
+// Security hardening
+// ============================================================
+function sanitizeName(name) {
+    return String(name || '')
+        .replace(/[<>&"'/\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 16) || 'Player';
+}
+
+function validScore(score) {
+    const n = Number(score);
+    return Number.isFinite(n) && n >= 1 && n <= 100000000; // no 0m spam, sane cap
+}
+
+// Simple per-IP rate limiter for write endpoints
+const rateBuckets = new Map();
+const RATE_LIMIT = 15;          // requests
+const RATE_WINDOW_MS = 60 * 1000; // per minute
+function rateLimited(req) {
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').toString().split(',')[0].trim();
+    const now = Date.now();
+    const bucket = rateBuckets.get(ip) || { count: 0, resetAt: now + RATE_WINDOW_MS };
+    if (now > bucket.resetAt) { bucket.count = 0; bucket.resetAt = now + RATE_WINDOW_MS; }
+    bucket.count++;
+    rateBuckets.set(ip, bucket);
+    if (rateBuckets.size > 5000) {
+        // evict stale buckets
+        for (const [k, v] of rateBuckets) {
+            if (now > v.resetAt) rateBuckets.delete(k);
+        }
+    }
+    return bucket.count > RATE_LIMIT;
+}
 
 let data = { highScores: [], runSnapshots: [] };
 try {
@@ -43,6 +63,24 @@ function persistData() {
         console.error('Failed to persist backend data:', error);
     }
 }
+
+// ============================================================
+// Static assets — ONLY public game files (fixed: no repo root)
+// ============================================================
+app.get('/', (req, res) => res.sendFile(path.join(rootPath, 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(rootPath, 'index.html')));
+app.get('/js/satSprint.js', (req, res) => res.sendFile(path.join(rootPath, 'js', 'satSprint.js')));
+app.get('/js/audio.js', (req, res) => res.sendFile(path.join(rootPath, 'js', 'audio.js')));
+app.get('/manifest.webmanifest', (req, res) => {
+    res.set('Content-Type', 'application/manifest+json');
+    res.sendFile(path.join(rootPath, 'manifest.webmanifest'));
+});
+app.get('/icons/:file', (req, res) => {
+    const file = path.basename(req.params.file);
+    if (!/^[\w.-]+$/.test(file)) return res.status(400).json({ error: 'bad file' });
+    res.sendFile(path.join(rootPath, 'icons', file));
+});
+app.get('/sw.js', (req, res) => res.sendFile(path.join(rootPath, 'sw.js')));
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', version: 'sat-sprint-backend' });
@@ -71,31 +109,31 @@ function broadcastWS(message) {
 }
 
 app.post('/api/high-scores', (req, res) => {
+    if (rateLimited(req)) return res.status(429).json({ error: 'slow down' });
     const body = req.body;
     if (body && body.type === 'run_snapshot') {
         const payload = body.payload || {};
+        if (payload.playerName) payload.playerName = sanitizeName(payload.playerName);
         data.runSnapshots.unshift({ ...payload, savedAt: Date.now() });
         if (data.runSnapshots.length > 100) data.runSnapshots.length = 100;
         persistData();
-        // Broadcast new snapshot to clients
         broadcastWS({ type: 'run_snapshot', payload });
         return res.json({ ok: true });
     }
 
-    if (!body || typeof body.name !== 'string' || typeof body.score !== 'number') {
+    if (!body || typeof body.name !== 'string' || !validScore(body.score)) {
         return res.status(400).json({ error: 'Expected {name, score} or {type:"run_snapshot", payload}' });
     }
 
     const entry = {
-        name: body.name.trim() || 'Player',
-        score: body.score,
+        name: sanitizeName(body.name),
+        score: Math.floor(body.score),
         savedAt: Date.now()
     };
     data.highScores.push(entry);
     data.highScores.sort((a, b) => b.score - a.score);
     data.highScores = data.highScores.slice(0, 50);
     persistData();
-    // Broadcast updated high scores
     broadcastWS({ type: 'high_scores', data: data.highScores.slice(0, 50) });
     res.json({ ok: true });
 });
@@ -110,26 +148,25 @@ app.post('/api/high-scores/cleanup', (req, res) => {
     if (mode === 'clear-all') {
         data.highScores = [];
     } else {
-        // default: remove entries with name containing TEST or test
         data.highScores = (data.highScores || []).filter(e => !/test/i.test(e.name));
     }
     persistData();
-    // broadcast updated list
     broadcastWS({ type: 'high_scores', data: data.highScores.slice(0, 50) });
     res.json({ ok: true, mode, count: data.highScores.length });
 });
 
 app.post('/api/run-snapshot', (req, res) => {
+    if (rateLimited(req)) return res.status(429).json({ error: 'slow down' });
     const body = req.body;
     if (!body || body.type !== 'run_snapshot' || typeof body.payload !== 'object') {
         return res.status(400).json({ error: 'Expected {type:"run_snapshot", payload}' });
     }
 
     const payload = { ...body.payload, savedAt: Date.now() };
+    if (payload.playerName) payload.playerName = sanitizeName(payload.playerName);
     data.runSnapshots.unshift(payload);
     if (data.runSnapshots.length > 100) data.runSnapshots.length = 100;
     persistData();
-    // Broadcast new snapshot
     broadcastWS({ type: 'run_snapshot', payload });
     res.json({ ok: true });
 });
@@ -142,15 +179,10 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
 wss.on('connection', (socket, req) => {
-    // send current high scores on connect
-    // assign an id for this socket
     socket._id = Date.now().toString(36) + '-' + Math.floor(Math.random() * 100000).toString(36);
-    // send current high scores on connect and notify client of its id
     socket.send(JSON.stringify({ type: 'welcome', id: socket._id, data: data.highScores.slice(0, 50) }));
-    // optional: log
     console.log('WS client connected', req.socket.remoteAddress, 'id=', socket._id);
 
-    // track active players by socket id
     wss.activePlayers = wss.activePlayers || {};
     wss.activePlayers[socket._id] = { id: socket._id, connectedAt: Date.now() };
 
@@ -158,38 +190,31 @@ wss.on('connection', (socket, req) => {
         try {
             const parsed = JSON.parse(msg);
             if (!parsed || !parsed.type) return;
-            // simple ping/pong
             if (parsed.type === 'ping') return socket.send(JSON.stringify({ type: 'pong' }));
 
-            // presence update (name, status)
             if (parsed.type === 'presence') {
                 const payload = parsed.payload || {};
                 wss.activePlayers[socket._id] = Object.assign(wss.activePlayers[socket._id] || {}, {
                     id: socket._id,
-                    name: payload.name || wss.activePlayers[socket._id].name || 'Player',
+                    name: sanitizeName(payload.name || 'Player'),
                     lastSeen: Date.now()
                 });
-                // broadcast presence to all clients
                 broadcastWS({ type: 'presence', id: socket._id, payload: wss.activePlayers[socket._id] });
                 return;
             }
 
-            // live run progress updates
             if (parsed.type === 'run_progress') {
                 const payload = parsed.payload || {};
-                // attach to activePlayers
                 wss.activePlayers[socket._id] = Object.assign(wss.activePlayers[socket._id] || {}, {
                     id: socket._id,
-                    name: payload.name || wss.activePlayers[socket._id].name || 'Player',
+                    name: sanitizeName(payload.name || 'Player'),
                     lastSeen: Date.now(),
                     progress: payload
                 });
-                // broadcast to others
                 broadcastWS({ type: 'run_progress', id: socket._id, payload: wss.activePlayers[socket._id] });
                 return;
             }
 
-            // allow clients to ask for current active players
             if (parsed.type === 'get_active_players') {
                 socket.send(JSON.stringify({ type: 'active_players', data: Object.values(wss.activePlayers || {}) }));
                 return;

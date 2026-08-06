@@ -349,6 +349,32 @@
             border: 1px solid rgba(247, 147, 26, 0.35);
         }
 
+        #audioToggles {
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        #audioToggles button {
+            pointer-events: auto;
+            font-size: 13px;
+            padding: 9px 13px;
+            border-radius: 12px;
+            background: rgba(17, 24, 39, 0.9);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        #shareScoreBtn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #25d366;
+            color: #06351c;
+            text-decoration: none;
+        }
+
         .btcpay-form {
             margin-top: 14px;
         }
@@ -517,8 +543,6 @@
         }
     </style>
     <link rel="manifest" href="manifest.webmanifest">
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
         #saveResumeScreen .card {
             max-width: 410px
@@ -594,6 +618,10 @@
 
         <div id="gameControls">
             <button id="menuDuringGame" class="secondary">Pause</button>
+            <div id="audioToggles">
+                <button id="musicToggleBtn">🎵 On</button>
+                <button id="sfxToggleBtn">🔊 On</button>
+            </div>
         </div>
 
         <div id="cupButton" title="Tap the cup for bonus sats">🏆</div>
@@ -812,12 +840,25 @@
                 </div>
                 <div class="homeButtons">
                     <button id="retryBtn">↻ Run Again</button>
+                    <a id="shareScoreBtn" target="_blank" rel="noopener noreferrer" style="display:none;">📲 Share
+                        Score</a>
                     <button id="overHomeBtn" class="secondary">← Back to Menu</button>
                 </div>
             </div>
         </div>
     </div>
+    <script src="js/audio.js"></script>
     <script src="js/satSprint.js"></script>
+    <script>
+        // PWA: register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (e) {
+                    console.warn('SW registration failed', e);
+                });
+            });
+        }
+    </script>
     <script>
         function handlePlusMinus(event) {
             event.preventDefault();
