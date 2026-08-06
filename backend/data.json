@@ -2,8 +2,58 @@
   "highScores": [
     {
       "name": "naka",
+      "score": 1468,
+      "savedAt": 1786000560744
+    },
+    {
+      "name": "naka",
+      "score": 965,
+      "savedAt": 1786004202259
+    },
+    {
+      "name": "naka",
+      "score": 223,
+      "savedAt": 1785999735398
+    },
+    {
+      "name": "naka",
       "score": 174,
       "savedAt": 1785929382269
+    },
+    {
+      "name": "naka",
+      "score": 147,
+      "savedAt": 1786000484336
+    },
+    {
+      "name": "naka",
+      "score": 146,
+      "savedAt": 1786000621093
+    },
+    {
+      "name": "naka",
+      "score": 141,
+      "savedAt": 1785999777540
+    },
+    {
+      "name": "naka",
+      "score": 129,
+      "savedAt": 1786000496995
+    },
+    {
+      "name": "naka",
+      "score": 120,
+      "savedAt": 1786004154560
+    },
+    {
+      "name": "naka",
+      "score": 118,
+      "savedAt": 1786000104929
+    },
+    {
+      "name": "naka",
+      "score": 37,
+      "savedAt": 1786000124679
     },
     {
       "name": "musa",
@@ -11,9 +61,34 @@
       "savedAt": 1785927151080
     },
     {
+      "name": "naka",
+      "score": 35,
+      "savedAt": 1785999370518
+    },
+    {
+      "name": "naka",
+      "score": 33,
+      "savedAt": 1786000805440
+    },
+    {
       "name": "karen",
       "score": 31,
       "savedAt": 1785927173827
+    },
+    {
+      "name": "naka",
+      "score": 31,
+      "savedAt": 1785999364307
+    },
+    {
+      "name": "naka",
+      "score": 31,
+      "savedAt": 1785999710481
+    },
+    {
+      "name": "naka",
+      "score": 31,
+      "savedAt": 1786000572227
     }
   ],
   "runSnapshots": []
