@@ -40,19 +40,29 @@
     const walletReward = document.getElementById('walletReward');
     const playerNameInput = document.getElementById('playerName');
     const highScoresList = document.getElementById('highScoresList');
-    const tipMessage = document.getElementById('tipMessage');
     const streakEl = document.getElementById('streak');
     const lightningEl = document.getElementById('lightning');
     const quizScreen = document.getElementById('quizScreen');
     const quizQuestionEl = document.getElementById('quizQuestion');
     const quizAnswersEl = document.getElementById('quizAnswers');
     const quizFeedbackEl = document.getElementById('quizFeedback');
+    const quizHintEl = document.getElementById('quizHint');
+    const cupButton = document.getElementById('cupButton');
     const finalLightningEl = document.getElementById('finalLightning');
     const rewardPointsEl = document.getElementById('rewardPoints');
 
     let lightningCharge = 0;
     let satsCollected = 0;
     let rewardPoints = 0;
+    let quizPending = false;
+    let quizZone = null;
+    const QUIZ_WARNING_TIME = 7; // seconds before quiz to show checkpoint
+    const QUIZ_ZONE_WIDTH = 110;
+    const QUIZ_ZONE_Y = 0;
+    const DOUBLE_JUMP_COIN_CHANCE = 0.12;
+    const CUP_SHAKE_INTERVAL = 10;
+    let cupShakeTimer = CUP_SHAKE_INTERVAL;
+    let quizWarningDialogOpen = false;
 
     const STORE_KEY = 'sat_sprint_player_v3';
     const HIGH_SCORES_KEY = 'sat_sprint_high_scores_v1';
@@ -293,18 +303,32 @@
             function renderLivePlayers() {
                 const el = document.getElementById('livePlayersList');
                 if (!el) return;
-                const items = Object.values(livePlayers).sort((a, b) => (b.progress && b.progress.score || 0) - (a.progress && a.progress.score || 0));
-                if (!items.length) { el.innerHTML = '<div style="opacity:.7;">No active players</div>'; return; }
+                const items = Object.values(livePlayers)
+                    .map(p => ({
+                        id: p.id,
+                        name: p.name || 'Player',
+                        progress: p.progress || {},
+                        lastSeen: p.lastSeen || 0
+                    }))
+                    .sort((a, b) => (b.progress.score || 0) - (a.progress.score || 0));
+                if (!items.length) {
+                    el.innerHTML = '<div style="opacity:.7;">No active players</div>';
+                    return;
+                }
+                const namesSeen = new Set();
                 el.innerHTML = items.map(p => {
-                    const name = p.name || 'Player';
-                    const sc = p.progress && typeof p.progress.score !== 'undefined' ? p.progress.score + 'm' : '';
-                    const ds = p.progress && typeof p.progress.distance !== 'undefined' ? ' • ' + Math.floor(p.progress.distance) + 'm' : '';
-                    return `<div><strong>${name}</strong>${sc ? ' — ' + sc : ''}${ds}</div>`;
+                    const displayName = namesSeen.has(p.name) ? `${p.name} (${p.id.slice(0, 4)})` : p.name;
+                    namesSeen.add(p.name);
+                    const sc = typeof p.progress.score !== 'undefined' && p.progress.score !== null ? p.progress.score + 'm' : '';
+                    const ds = typeof p.progress.distance !== 'undefined' && p.progress.distance !== null ? ' • ' + Math.floor(p.progress.distance) + 'm' : '';
+                    return `<div><strong>${displayName}</strong>${sc ? ' — ' + sc : ''}${ds}</div>`;
                 }).join('');
             }
 
             ws.addEventListener('open', () => {
                 console.info('SAT SPRINT WS connected to', wsUrl);
+                const wsStatus = document.getElementById('wsStatus');
+                if (wsStatus) wsStatus.textContent = 'WS: connected';
                 try { ws.send(JSON.stringify({ type: 'presence', payload: { name: account.name || 'Player' } })); } catch (e) { }
                 // request current active players
                 try { ws.send(JSON.stringify({ type: 'get_active_players' })); } catch (e) { }
@@ -535,15 +559,18 @@
     function maybeQuiz(dt) {
         if (state !== 'playing') return;
         quizTimer += dt;
-        if (quizTimer > 32 && quizScreen.classList.contains('hidden')) {
+        if (quizTimer > 32 && !quizPending) {
             quizTimer = 0;
-            pauseForQuiz();
+            createQuizCheckpoint();
         }
     }
 
     function pauseForQuiz() {
         if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
         state = 'quiz';
+        quizWarningDialogOpen = false;
+        quizPending = false;
+        quizTimer = 0;
         const q = quizBank[Math.floor(Math.random() * quizBank.length)];
         quizQuestionEl.textContent = q.q;
         quizAnswersEl.innerHTML = '';
@@ -572,6 +599,26 @@
             quizAnswersEl.appendChild(b);
         });
         quizScreen.classList.remove('hidden');
+    }
+
+    function createQuizCheckpoint() {
+        quizZone = { kind: 'quizCheckpoint', x: W + 340, w: QUIZ_ZONE_WIDTH, passed: false };
+        obstacles.push(quizZone);
+        quizPending = true;
+        if (!quizWarningDialogOpen) {
+            quizWarningDialogOpen = true;
+            if (window.satSprintSaveRun) {
+                window.satSprintSaveRun('quiz-warning');
+            }
+            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+            state = 'paused';
+            document.getElementById('quizWarningScreen')?.classList.remove('hidden');
+        }
+    }
+
+    function hideQuizWarningDialog() {
+        document.getElementById('quizWarningScreen')?.classList.add('hidden');
+        quizWarningDialogOpen = false;
     }
 
     function updateHomeUI() {
@@ -633,6 +680,38 @@
         lifeTimer.textContent = sec ? 'Free revival in ' + fmtTime(sec) : (gamePlayer.lives < 10 ? 'A free life is ready.' : '');
         homeTimer.textContent = sec ? 'Next free life in ' + fmtTime(sec) : '';
     }
+    const toggleHighScoresBtn = document.getElementById('toggleHighScoresBtn');
+    const highScoresBox = document.getElementById('highScoresBox');
+    const quizWarningContinueBtn = document.getElementById('quizWarningContinueBtn');
+    const quizWarningCancelBtn = document.getElementById('quizWarningCancelBtn');
+
+    if (quizWarningContinueBtn) {
+        quizWarningContinueBtn.onclick = function () {
+            hideQuizWarningDialog();
+            pauseForQuiz();
+        };
+    }
+    if (quizWarningCancelBtn) {
+        quizWarningCancelBtn.onclick = function () {
+            hideQuizWarningDialog();
+            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+            state = 'playing';
+        };
+    }
+
+    function setHighScoresVisible(show) {
+        if (!highScoresBox || !toggleHighScoresBtn) return;
+        highScoresBox.classList.toggle('hidden', !show);
+        toggleHighScoresBtn.textContent = show ? 'Hide High Scores' : 'Show High Scores';
+    }
+
+    if (toggleHighScoresBtn) {
+        toggleHighScoresBtn.addEventListener('click', function () {
+            const visible = highScoresBox && !highScoresBox.classList.contains('hidden');
+            setHighScoresVisible(!visible);
+        });
+    }
+
     homePlayBtn.onclick = startFromHome;
     supportBtn.onclick = () => { homeScreen.classList.add('hidden'); supportScreen.classList.remove('hidden'); };
     walletBtn.onclick = () => { homeScreen.classList.add('hidden'); walletScreen.classList.remove('hidden'); updateHomeUI(); };
@@ -710,6 +789,9 @@
         if (Math.random() < 0.22) {
             coins.push({ x: W + 80, y: groundY - 150, r: 14, taken: false, bob: Math.random() * Math.PI * 2, lightning: true });
         }
+        if (Math.random() < DOUBLE_JUMP_COIN_CHANCE) {
+            coins.push({ x: W + 120, y: groundY - 230, r: 18, taken: false, bob: Math.random() * Math.PI * 2, lightning: true, doubleJump: true });
+        }
         if (Math.random() < 0.7) {
             const baseX = W + 60;
             const cnt = 3 + Math.floor(Math.random() * 3);
@@ -740,6 +822,11 @@
         let overGap = false;
         for (const o of obstacles) {
             if (o.kind === 'gap' && pCenterX > o.x + 8 && pCenterX < o.x + o.w - 8) { overGap = true; break; }
+            if (o.kind === 'quizCheckpoint' && !o.passed && pCenterX > o.x + o.w / 2) {
+                o.passed = true;
+                quizZone = null;
+                pauseForQuiz();
+            }
         }
 
         gamePlayer.vy += GRAVITY * dt;
@@ -766,6 +853,9 @@
             nextSpawnAt = Math.max(0.55, 1.3 - elapsed * 0.01) + Math.random() * 0.5;
             spawnObstacle();
         }
+        if (!quizPending && quizTimer > QUIZ_WARNING_TIME && !quizZone) {
+            createQuizCheckpoint();
+        }
 
         for (const o of obstacles) { o.x -= speed * dt; }
         obstacles = obstacles.filter(o => o.x + (o.w || 0) > -60);
@@ -789,13 +879,18 @@
         for (const c of coins) {
             if (c.taken) continue;
             const dx = (px + pw / 2) - c.x, dy = (py + ph / 2) - (c.y + Math.sin(c.bob) * 6);
-            if (Math.sqrt(dx * dx + dy * dy) < c.r + pw * 0.35) {
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < c.r + pw * 0.35) {
+                if (c.doubleJump && gamePlayer.jumps < 2) {
+                    continue;
+                }
                 c.taken = true;
                 if (c.lightning) {
                     lightningCharge = 100;
                     lightningMode = 6;
-                    rewardPoints += 100;
-                    spawnBurst(c.x, c.y, '#7dd3fc', 18, true);
+                    rewardPoints += c.doubleJump ? 220 : 100;
+                    satsCollected += c.doubleJump ? 15 : 0;
+                    spawnBurst(c.x, c.y, c.doubleJump ? '#c084fc' : '#7dd3fc', c.doubleJump ? 24 : 18, true);
                 } else {
                     coinCount++;
                     const earned = 1 + Math.floor(elapsed / 25);
@@ -818,6 +913,14 @@
         particles = particles.filter(p => p.t < p.life);
 
         if (shakeT > 0) shakeT -= dt;
+        if (cupButton) {
+            cupShakeTimer -= dt;
+            if (cupShakeTimer <= 0) {
+                cupButton.classList.add('shake');
+                setTimeout(() => cupButton.classList.remove('shake'), 350);
+                cupShakeTimer = CUP_SHAKE_INTERVAL + Math.random() * 6;
+            }
+        }
     }
 
     // ---------- draw ----------
@@ -859,8 +962,25 @@
     function drawGaps() {
         for (const o of obstacles) {
             if (o.kind === 'gap') {
-                ctx.fillStyle = '#2b2320';
+                ctx.fillStyle = '#ffffff';
                 ctx.fillRect(o.x, groundY, o.w, H - groundY);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.fillRect(o.x + 2, groundY + 2, Math.max(0, o.w - 4), 20);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([14, 10]);
+                ctx.beginPath();
+                ctx.moveTo(o.x + 12, groundY + 16);
+                ctx.lineTo(o.x + o.w - 12, groundY + 16);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                const stripeCount = Math.max(4, Math.round((o.w - 16) / 28));
+                const stripeStep = (o.w - 16) / stripeCount;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+                for (let i = 0; i < stripeCount; i++) {
+                    const sx = o.x + 10 + i * stripeStep;
+                    ctx.fillRect(sx, groundY + 26, stripeStep * 0.42, 16);
+                }
             }
         }
     }
@@ -892,14 +1012,23 @@
             ctx.translate(c.x, y);
             const squeeze = Math.abs(Math.cos(c.bob * 0.7));
             ctx.scale(0.4 + 0.6 * squeeze, 1);
-            ctx.fillStyle = c.lightning ? '#38bdf8' : '#ffb300';
+            if (c.doubleJump) {
+                ctx.fillStyle = '#c084fc';
+            } else {
+                ctx.fillStyle = c.lightning ? '#38bdf8' : '#ffb300';
+            }
             ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = c.lightning ? '#0c4a6e' : '#d18a00';
+            if (c.doubleJump) ctx.fillStyle = '#7c3aed';
             ctx.beginPath(); ctx.arc(0, 0, c.r * 0.5, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold ' + Math.max(11, c.r * 0.95) + 'px Arial';
+            ctx.font = 'bold ' + Math.max(11, c.r * 0.7) + 'px Arial';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(c.lightning ? '⚡' : '₿', 0, 1);
+            if (c.doubleJump) {
+                ctx.fillText('⚡⚡', 0, 1);
+            } else {
+                ctx.fillText(c.lightning ? '⚡' : '₿', 0, 1);
+            }
             ctx.restore();
         }
     }
@@ -977,7 +1106,6 @@
 
 (function () {
     const gameControls = document.getElementById('gameControls');
-    const tipPrompt = document.getElementById('tipPrompt');
     const pauseScreen = document.getElementById('pauseScreen');
     const supportScreen = document.getElementById('supportScreen');
     const homeScreen = document.getElementById('homeScreen');
@@ -987,14 +1115,11 @@
     const startScreen = document.getElementById('startScreen');
     const quizScreen = document.getElementById('quizScreen');
     const menuDuringGame = document.getElementById('menuDuringGame');
-    const tipDuringGame = document.getElementById('tipDuringGame');
-    const openTipFromPrompt = document.getElementById('openTipFromPrompt');
     const continueBtn = document.getElementById('continueBtn');
     const exitRunBtn = document.getElementById('exitRunBtn');
 
     function setGameplayUI(on) {
         gameControls.style.display = on ? 'flex' : 'none';
-        tipPrompt.style.display = on ? 'block' : 'none';
     }
 
     menuDuringGame.onclick = function () {
@@ -1002,14 +1127,12 @@
             window.satSprintSaveRun('menu');
             state = 'paused';
             pauseScreen.classList.remove('hidden');
-            tipPrompt.style.display = 'none';
         }
     };
 
     continueBtn.onclick = function () {
         pauseScreen.classList.add('hidden');
         if (typeof state !== 'undefined') state = 'playing';
-        tipPrompt.style.display = 'block';
     };
 
     exitRunBtn.onclick = function () {
@@ -1115,36 +1238,20 @@
     const supportScreen = document.getElementById('supportScreen');
     const pauseScreen = document.getElementById('pauseScreen');
     const menuBtn = document.getElementById('menuDuringGame');
-    const giftBtn = document.getElementById('tipDuringGame');
-    const giftPrompt = document.getElementById('openTipFromPrompt');
     const continueBtn = document.getElementById('continueBtn');
     const exitBtn = document.getElementById('exitRunBtn');
     const supportBack = document.getElementById('supportBackBtn');
 
-    let supportOpenedFromGame = false;
-    function openGift() {
-        supportOpenedFromGame = false;
-        if (typeof window.satSprintGetState === 'function' && window.satSprintGetState() === 'playing') {
-            window.satSprintSaveRun('developer_tip');
-            supportOpenedFromGame = true;
-            if (typeof window.satSprintSetState === 'function') window.satSprintSetState('paused');
-            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-        }
-        supportScreen.classList.remove('hidden');
-    }
-
     function closeGift() {
         supportScreen.classList.add('hidden');
-        if (supportOpenedFromGame) {
-            const saved = window.satSprintGetSavedRun();
-            if (saved) {
-                window.satSprintResumeSaved();
-            }
-        }
     }
 
-    if (giftBtn) giftBtn.onclick = openGift;
-    if (giftPrompt) giftPrompt.onclick = openGift;
+    if (cupButton) cupButton.onclick = function () {
+        satsCollected += 5;
+        rewardPoints += 15;
+        if (cupButton) cupButton.classList.add('shake');
+        setTimeout(() => cupButton.classList.remove('shake'), 450);
+    };
     if (supportBack) supportBack.onclick = closeGift;
 
     if (menuBtn) menuBtn.onclick = function () {
@@ -1175,44 +1282,3 @@
     };
 })();
 
-(function () {
-    const address = 'mugoiri@blink.sv';
-    const addressEl = document.getElementById('blinkAddress');
-    const copyBtn = document.getElementById('copyBlinkAddress');
-    const zapBtn = document.getElementById('zapDeveloperBtn');
-    const status = document.getElementById('zapStatus');
-
-    if (addressEl) addressEl.textContent = address;
-
-    if (copyBtn) {
-        copyBtn.type = 'button';
-        copyBtn.addEventListener('click', async function () {
-            try {
-                await navigator.clipboard.writeText(address);
-                copyBtn.textContent = '✓ Copied';
-                if (status) status.textContent = 'Copied — paste it into your Lightning wallet.';
-                setTimeout(() => copyBtn.textContent = '📋 Copy address', 1600);
-            } catch (e) {
-                if (status) status.textContent = address;
-            }
-        });
-    }
-
-    if (zapBtn) {
-        zapBtn.type = 'button';
-        zapBtn.addEventListener('click', function () {
-            const uri = 'lightning:' + address;
-            if (status) status.textContent = 'Opening Lightning wallet...';
-            const link = document.createElement('a');
-            link.href = uri;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => {
-                if (status && status.textContent === 'Opening Lightning wallet...') {
-                    status.textContent = 'If nothing opened, copy the address and paste it into your wallet.';
-                }
-            }, 1200);
-        });
-    }
-})();
