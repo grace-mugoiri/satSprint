@@ -1,0 +1,10 @@
+{
+    "name": "SAT SPRINT",
+    "short_name": "SAT SPRINT",
+    "description": "Bitcoin runner game with sats, Lightning and quiz checkpoints.",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0b1220",
+    "theme_color": "#0b1220",
+    "orientation": "portrait"
+}

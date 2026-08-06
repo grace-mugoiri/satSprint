@@ -2,6 +2,11 @@
   "highScores": [
     {
       "name": "naka",
+      "score": 1824,
+      "savedAt": 1786008639229
+    },
+    {
+      "name": "naka",
       "score": 1468,
       "savedAt": 1786000560744
     },
@@ -9,6 +14,16 @@
       "name": "naka",
       "score": 965,
       "savedAt": 1786004202259
+    },
+    {
+      "name": "naka",
+      "score": 725,
+      "savedAt": 1786008688929
+    },
+    {
+      "name": "naka",
+      "score": 269,
+      "savedAt": 1786008151270
     },
     {
       "name": "naka",
@@ -47,6 +62,16 @@
     },
     {
       "name": "naka",
+      "score": 121,
+      "savedAt": 1786008436622
+    },
+    {
+      "name": "naka",
+      "score": 121,
+      "savedAt": 1786008490027
+    },
+    {
+      "name": "naka",
       "score": 120,
       "savedAt": 1786004154560
     },
@@ -77,6 +102,11 @@
     },
     {
       "name": "naka",
+      "score": 35,
+      "savedAt": 1786008005163
+    },
+    {
+      "name": "naka",
       "score": 33,
       "savedAt": 1786000805440
     },
@@ -101,5 +131,312 @@
       "savedAt": 1786000572227
     }
   ],
-  "runSnapshots": []
+  "runSnapshots": [
+    {
+      "score": 99,
+      "sats": 8,
+      "charge": 64,
+      "elapsed": 7.000500000000012,
+      "distance": 99.60326220550004,
+      "speed": 309.0035000000001,
+      "spawnTimer": 0.11770000000000073,
+      "nextSpawnAt": 1.5563940302765342,
+      "hillOffset1": -298.80978661650016,
+      "hillOffset2": -597.6195732330003,
+      "lightningMode": 0,
+      "quizTimer": 7.000500000000012,
+      "coinCount": 8,
+      "rewardPoints": 80,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 518.080156,
+        "vy": 46.740000000001594,
+        "onGround": false,
+        "jumps": 1,
+        "squash": 1.0054239319757998,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "gap",
+          "x": 48.87617211999985,
+          "w": 98.43393954160547,
+          "passed": false
+        },
+        {
+          "kind": "gap",
+          "x": 522.6927473300001,
+          "w": 86.99019864816393,
+          "passed": false
+        },
+        {
+          "kind": "quizCheckpoint",
+          "x": 859.99609375,
+          "w": 110,
+          "passed": false
+        }
+      ],
+      "coins": [
+        {
+          "x": 170.87617212,
+          "y": 556.7546609406727,
+          "r": 10,
+          "taken": false,
+          "bob": 12.124166805512065
+        },
+        {
+          "x": 204.87617212,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 12.88037617994653
+        },
+        {
+          "x": 562.6927473300001,
+          "y": 532.11,
+          "r": 14,
+          "taken": false,
+          "bob": 3.9743339909479873,
+          "lightning": true
+        },
+        {
+          "x": 602.6927473300001,
+          "y": 452.11,
+          "r": 18,
+          "taken": false,
+          "bob": 5.986334931640338,
+          "lightning": true,
+          "doubleJump": true
+        },
+        {
+          "x": 542.6927473300001,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 6.238507495355336
+        },
+        {
+          "x": 576.6927473300001,
+          "y": 542.11,
+          "r": 10,
+          "taken": false,
+          "bob": 1.9167721556638189
+        },
+        {
+          "x": 610.6927473300001,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 1.4164323744610539
+        }
+      ],
+      "savedAt": 1786008435224,
+      "reason": "quiz-warning",
+      "playerName": "naka"
+    },
+    {
+      "score": 261,
+      "sats": 16,
+      "charge": 100,
+      "elapsed": 16.44989999999994,
+      "distance": 261.25156153750004,
+      "speed": 375.1492999999996,
+      "spawnTimer": 0.6334000000000087,
+      "nextSpawnAt": 1.1557069371232251,
+      "hillOffset1": -889.4236213800006,
+      "hillOffset2": -1778.847242760001,
+      "lightningMode": 3.649999999999979,
+      "quizTimer": 7.000000000000033,
+      "coinCount": 16,
+      "rewardPoints": 860,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 642.11,
+        "vy": 0,
+        "onGround": true,
+        "jumps": 0,
+        "squash": 0.9994926499006099,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "spike",
+          "x": 323.81779003000236,
+          "y": 682.11,
+          "w": 30,
+          "h": 52.07742470323101,
+          "passed": false
+        },
+        {
+          "kind": "quizCheckpoint",
+          "x": 859.99609375,
+          "w": 110,
+          "passed": false
+        }
+      ],
+      "coins": [],
+      "savedAt": 1786008069607,
+      "reason": "quiz-warning",
+      "playerName": "naka"
+    },
+    {
+      "score": 99,
+      "sats": 10,
+      "charge": 80,
+      "elapsed": 7.0164000000000275,
+      "distance": 99.84890272600003,
+      "speed": 309.1148000000002,
+      "spawnTimer": 0.2497999999999993,
+      "nextSpawnAt": 1.6656035260779378,
+      "hillOffset1": -405.21564494550034,
+      "hillOffset2": -810.4312898910007,
+      "lightningMode": 0,
+      "quizTimer": 7.0164000000000275,
+      "coinCount": 10,
+      "rewardPoints": 100,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 566.84644,
+        "vy": 449.5599999999984,
+        "onGround": false,
+        "jumps": 1,
+        "squash": 1.000733113453168,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "spike",
+          "x": 34.821634669999995,
+          "y": 682.11,
+          "w": 30,
+          "h": 40.15980389298568,
+          "passed": false
+        },
+        {
+          "kind": "gap",
+          "x": 482.95043522999987,
+          "w": 90.99772679241455,
+          "passed": false
+        },
+        {
+          "kind": "quizCheckpoint",
+          "x": 859.99609375,
+          "w": 110,
+          "passed": false
+        }
+      ],
+      "coins": [
+        {
+          "x": 54.82163467000003,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 11.651854313632377
+        },
+        {
+          "x": 502.95043522999987,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 1.7901762197008917
+        },
+        {
+          "x": 536.9504352299999,
+          "y": 542.11,
+          "r": 10,
+          "taken": false,
+          "bob": 5.2541873476763366
+        },
+        {
+          "x": 570.9504352299999,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 3.6786026652718666
+        }
+      ],
+      "savedAt": 1786008014844,
+      "reason": "quiz-warning",
+      "playerName": "naka"
+    },
+    {
+      "score": 99,
+      "sats": 0,
+      "charge": 100,
+      "elapsed": 7.0165000000000255,
+      "distance": 99.85045463150003,
+      "speed": 309.11550000000017,
+      "spawnTimer": 1.2999000000000018,
+      "nextSpawnAt": 1.6686893184114338,
+      "hillOffset1": -299.5513638945001,
+      "hillOffset2": -599.1027277890003,
+      "lightningMode": 4.399399999999983,
+      "quizTimer": 7.0165000000000255,
+      "coinCount": 0,
+      "rewardPoints": 100,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 528.8064280000001,
+        "vy": -245.20000000000005,
+        "onGround": false,
+        "jumps": 1,
+        "squash": 1.0231758302242413,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "gap",
+          "x": 164.13612178999995,
+          "w": 91.42376249111503,
+          "passed": false
+        },
+        {
+          "kind": "quizCheckpoint",
+          "x": 859.99609375,
+          "w": 110,
+          "passed": false
+        }
+      ],
+      "coins": [
+        {
+          "x": 184.1361217899999,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 11.452941786499665
+        },
+        {
+          "x": 218.1361217899999,
+          "y": 556.7546609406727,
+          "r": 10,
+          "taken": false,
+          "bob": 14.01773829138971
+        },
+        {
+          "x": 252.13612179000006,
+          "y": 542.11,
+          "r": 10,
+          "taken": false,
+          "bob": 11.810110952496068
+        },
+        {
+          "x": 286.13612178999983,
+          "y": 556.7546609406727,
+          "r": 10,
+          "taken": false,
+          "bob": 9.717835160434628
+        },
+        {
+          "x": 320.13612178999983,
+          "y": 592.11,
+          "r": 10,
+          "taken": false,
+          "bob": 9.697716146918467
+        }
+      ],
+      "savedAt": 1786007855336,
+      "reason": "quiz-warning",
+      "playerName": "naka"
+    }
+  ]
 }

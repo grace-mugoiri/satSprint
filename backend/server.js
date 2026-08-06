@@ -10,6 +10,20 @@ const dataPath = path.join(__dirname, 'data.json');
 const rootPath = path.join(__dirname, '..');
 
 app.use(express.json());
+app.use((req, res, next) => {
+    const normalized = decodeURIComponent(req.path).replace(/\\/g, '/').toLowerCase();
+    const forbidden = [
+        '/backend', '/backend/', '/backend/server.js', '/backend/data.json',
+        '/readme.md', '/package.json', '/package-lock.json', '/.git', '/.git/', '/.gitignore'
+    ];
+    if (forbidden.some(f => normalized === f || normalized.startsWith(f + '/'))) {
+        return res.status(404).end();
+    }
+    if (normalized.includes('..') || path.basename(normalized).startsWith('.')) {
+        return res.status(404).end();
+    }
+    next();
+});
 app.use(express.static(rootPath));
 // Allow CORS for development; in production lock this down to allowed origins.
 app.use(cors());

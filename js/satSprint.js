@@ -56,10 +56,55 @@
     let rewardPoints = 0;
     let quizPending = false;
     let quizZone = null;
+    const MIN_RUNS_BEFORE_QUIZ = 3;
     const QUIZ_WARNING_TIME = 7; // seconds before quiz to show checkpoint
     const QUIZ_ZONE_WIDTH = 110;
     const QUIZ_ZONE_Y = 0;
     const DOUBLE_JUMP_COIN_CHANCE = 0.12;
+
+    let audioCtx = null;
+    function initAudio() {
+        if (!window.AudioContext && !window.webkitAudioContext) return;
+        if (audioCtx && audioCtx.state !== 'suspended') return;
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => { });
+        }
+    }
+    function playSound({ freq = 440, type = 'sawtooth', duration = 0.1, volume = 0.15, detune = 0, attack = 0.005, release = 0.04 }) {
+        if (!window.AudioContext && !window.webkitAudioContext) return;
+        initAudio();
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        osc.detune.setValueAtTime(detune, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.001, volume), now + attack);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration - release);
+        gain.gain.setValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.05);
+    }
+    function playCoinSound() {
+        playSound({ freq: 760, type: 'triangle', duration: 0.08, volume: 0.12, detune: 40 });
+    }
+    function playLightningSound() {
+        playSound({ freq: 1200, type: 'sawtooth', duration: 0.12, volume: 0.16, detune: 80 });
+    }
+    function playQuizIncomingSound() {
+        playSound({ freq: 540, type: 'triangle', duration: 0.12, volume: 0.14 });
+    }
+    function playQuizAnswerSound(correct) {
+        playSound({ freq: correct ? 1020 : 320, type: correct ? 'sine' : 'square', duration: 0.15, volume: 0.18, detune: correct ? 0 : -10 });
+    }
+    function playGameOverSound() {
+        playSound({ freq: 220, type: 'sawtooth', duration: 0.2, volume: 0.16, detune: -20 });
+    }
     const CUP_SHAKE_INTERVAL = 10;
     let cupShakeTimer = CUP_SHAKE_INTERVAL;
     let quizWarningDialogOpen = false;
@@ -94,12 +139,20 @@
             return null;
         }
     }
+    function sanitizeScoreEntry(entry) {
+        if (!entry || typeof entry !== 'object') return null;
+        const name = String(entry.name || 'Player').trim().replace(/[<>"'`]/g, '');
+        const score = Number.isFinite(Number(entry.score)) ? Math.max(0, Math.floor(Number(entry.score))) : null;
+        if (score === null) return null;
+        return { name: name || 'Player', score };
+    }
     async function loadHighScores() {
         let remoteScores = await fetchRemoteHighScores();
-        if (remoteScores && remoteScores.length) {
-            highScores = remoteScores;
+        if (Array.isArray(remoteScores) && remoteScores.length) {
+            highScores = remoteScores.map(sanitizeScoreEntry).filter(Boolean);
         } else {
             try { highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY) || '[]') || []; } catch (e) { highScores = []; }
+            highScores = highScores.map(sanitizeScoreEntry).filter(Boolean);
         }
         highScoresPage = 0;
         renderHighScores();
@@ -124,8 +177,12 @@
     }
     function renderHighScores() {
         if (!highScoresList) return;
+        highScoresList.textContent = '';
         if (!highScores.length) {
-            highScoresList.innerHTML = '<div style="opacity:.7;">No high scores yet.</div>';
+            const empty = document.createElement('div');
+            empty.style.opacity = '.7';
+            empty.textContent = 'No high scores yet.';
+            highScoresList.appendChild(empty);
             updateHighScorePager();
             return;
         }
@@ -133,9 +190,18 @@
         highScoresPage = Math.min(highScoresPage, pageCount - 1);
         const start = highScoresPage * HIGHSCORES_PER_PAGE;
         const pageItems = highScores.slice(start, start + HIGHSCORES_PER_PAGE);
-        highScoresList.innerHTML = pageItems.map((entry, index) =>
-            `<div>${start + index + 1}. <strong>${entry.name}</strong> — ${entry.score}m</div>`
-        ).join('');
+        pageItems.forEach((entry, index) => {
+            const row = document.createElement('div');
+            const rank = document.createElement('span');
+            rank.textContent = `${start + index + 1}. `;
+            const name = document.createElement('strong');
+            name.textContent = String(entry.name || 'Player');
+            const score = Number.isFinite(Number(entry.score)) ? Math.floor(Number(entry.score)) : 0;
+            row.appendChild(rank);
+            row.appendChild(name);
+            row.insertAdjacentText('beforeend', ` — ${score}m`);
+            highScoresList.appendChild(row);
+        });
         updateHighScorePager();
     }
     function updateHighScorePager() {
@@ -193,14 +259,14 @@
         playerNameInput.addEventListener('input', saveNameValue);
     }
     async function addHighScore(name, score) {
-        const normalized = (name || 'Player').trim() || 'Player';
-        const entry = { name: normalized, score };
-        highScores.push(entry);
+        const sanitized = sanitizeScoreEntry({ name, score });
+        if (!sanitized) return;
+        highScores.push(sanitized);
         highScores.sort((a, b) => b.score - a.score);
         highScores = highScores.slice(0, 50);
         saveHighScores();
         renderHighScores();
-        const remoteSaved = await saveHighScoreRemote(entry);
+        const remoteSaved = await saveHighScoreRemote(sanitized);
         if (remoteSaved) {
             loadHighScores();
         }
@@ -269,6 +335,7 @@
     window.satSprintSetState = (value) => { state = value; };
     window.satSprintGetRunSnapshot = getRunSnapshot;
     window.satSprintLoadRunSnapshot = loadRunSnapshot;
+    window.satSprintSaveRunRemote = saveRunRemote;
     loadHighScores();
 
     // Periodically refresh remote high scores when a remote API is configured.
@@ -312,17 +379,28 @@
                     }))
                     .sort((a, b) => (b.progress.score || 0) - (a.progress.score || 0));
                 if (!items.length) {
-                    el.innerHTML = '<div style="opacity:.7;">No active players</div>';
+                    const empty = document.createElement('div');
+                    empty.style.opacity = '.7';
+                    empty.textContent = 'No active players';
+                    el.textContent = '';
+                    el.appendChild(empty);
                     return;
                 }
                 const namesSeen = new Set();
-                el.innerHTML = items.map(p => {
+                el.textContent = '';
+                items.forEach(p => {
                     const displayName = namesSeen.has(p.name) ? `${p.name} (${p.id.slice(0, 4)})` : p.name;
                     namesSeen.add(p.name);
-                    const sc = typeof p.progress.score !== 'undefined' && p.progress.score !== null ? p.progress.score + 'm' : '';
-                    const ds = typeof p.progress.distance !== 'undefined' && p.progress.distance !== null ? ' • ' + Math.floor(p.progress.distance) + 'm' : '';
-                    return `<div><strong>${displayName}</strong>${sc ? ' — ' + sc : ''}${ds}</div>`;
-                }).join('');
+                    const row = document.createElement('div');
+                    const strong = document.createElement('strong');
+                    strong.textContent = displayName;
+                    row.appendChild(strong);
+                    const extras = [];
+                    if (typeof p.progress.score !== 'undefined' && p.progress.score !== null) extras.push(p.progress.score + 'm');
+                    if (typeof p.progress.distance !== 'undefined' && p.progress.distance !== null) extras.push(Math.floor(p.progress.distance) + 'm');
+                    if (extras.length) row.insertAdjacentText('beforeend', ' — ' + extras.join(' • '));
+                    el.appendChild(row);
+                });
             }
 
             ws.addEventListener('open', () => {
@@ -457,13 +535,27 @@
     let best = 0;
     async function loadBest() {
         try {
-            const r = await window.storage.get('sat_sprint_best', false);
-            if (r && r.value) { best = JSON.parse(r.value).best || 0; }
+            let value = null;
+            if (window.storage && typeof window.storage.get === 'function') {
+                const r = await window.storage.get('sat_sprint_best', false);
+                if (r && r.value) value = r.value;
+            } else {
+                value = localStorage.getItem('sat_sprint_best');
+            }
+            if (value) { best = JSON.parse(value).best || 0; }
         } catch (e) { best = 0; }
+        best = Math.max(best, account.best || 0);
         bestEl.textContent = '🏆 BEST ' + best + 'm';
     }
     async function saveBest(v) {
-        try { await window.storage.set('sat_sprint_best', JSON.stringify({ best: v }), false); } catch (e) { }
+        try {
+            const payload = JSON.stringify({ best: v });
+            if (window.storage && typeof window.storage.set === 'function') {
+                await window.storage.set('sat_sprint_best', payload, false);
+            } else {
+                localStorage.setItem('sat_sprint_best', payload);
+            }
+        } catch (e) { }
     }
     loadBest();
 
@@ -536,6 +628,7 @@
         state = 'dead';
         shakeT = 0.35;
         spawnBurst(gamePlayer.x + gamePlayer.w / 2, gamePlayer.y + gamePlayer.h / 2, '#ff5d5d', 18, false);
+        playGameOverSound();
         const d = Math.floor(distance);
         finalScoreEl.textContent = d;
         coinLineEl.textContent = satsCollected + ' sats';
@@ -552,14 +645,14 @@
             savePlayer();
         }
         addHighScore(account.name || 'Player', d);
-        bestScoreLineEl.innerHTML = best + (isNew ? '<span id="newbest">NEW!</span>' : '');
+        bestScoreLineEl.textContent = best + (isNew ? ' NEW!' : '');
         setTimeout(() => { overScreen.classList.remove('hidden'); }, 500);
     }
 
     function maybeQuiz(dt) {
         if (state !== 'playing') return;
         quizTimer += dt;
-        if (quizTimer > 32 && !quizPending) {
+        if (account.totalRuns >= MIN_RUNS_BEFORE_QUIZ && quizTimer > 32 && !quizPending) {
             quizTimer = 0;
             createQuizCheckpoint();
         }
@@ -579,7 +672,8 @@
             const b = document.createElement('button');
             b.textContent = answer;
             b.onclick = () => {
-                if (i === q.correct) {
+                const wasCorrect = i === q.correct;
+                if (wasCorrect) {
                     quizStreak++;
                     rewardPoints += 250;
                     lightningCharge = Math.min(100, lightningCharge + 25);
@@ -590,6 +684,7 @@
                     quizFeedbackEl.textContent = 'Not quite — keep learning!';
                     quizFeedbackEl.style.color = '#f97316';
                 }
+                playQuizAnswerSound(wasCorrect);
                 streakEl.textContent = '🔥 ' + quizStreak;
                 setTimeout(() => {
                     quizScreen.classList.add('hidden');
@@ -611,7 +706,8 @@
                 window.satSprintSaveRun('quiz-warning');
             }
             if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-            state = 'paused';
+            if (window.satSprintSetState) window.satSprintSetState('paused');
+            playQuizIncomingSound();
             document.getElementById('quizWarningScreen')?.classList.remove('hidden');
         }
     }
@@ -768,7 +864,20 @@
     const overHomeBtn = document.getElementById('overHomeBtn');
     canvas.addEventListener('pointerdown', onPress);
     startBtn.addEventListener('click', startGame);
-    retryBtn.addEventListener('click', startGame);
+    retryBtn.addEventListener('click', function () {
+        if (account.lives > 0) {
+            account.lives--;
+            account.totalRuns++;
+            savePlayer();
+            overScreen.classList.add('hidden');
+            resetGame();
+            state = 'playing';
+            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+        } else {
+            overScreen.classList.add('hidden');
+            if (typeof openLifeScreen === 'function') openLifeScreen();
+        }
+    });
     if (overHomeBtn) {
         overHomeBtn.addEventListener('click', function () {
             overScreen.classList.add('hidden');
@@ -891,6 +1000,7 @@
                     rewardPoints += c.doubleJump ? 220 : 100;
                     satsCollected += c.doubleJump ? 15 : 0;
                     spawnBurst(c.x, c.y, c.doubleJump ? '#c084fc' : '#7dd3fc', c.doubleJump ? 24 : 18, true);
+                    playLightningSound();
                 } else {
                     coinCount++;
                     const earned = 1 + Math.floor(elapsed / 25);
@@ -899,6 +1009,7 @@
                     lightningCharge = Math.min(100, lightningCharge + 8);
                     rewardPoints += 10;
                     spawnBurst(c.x, c.y, '#ffb300', 8, true);
+                    playCoinSound();
                 }
             }
         }
@@ -1123,21 +1234,21 @@
     }
 
     menuDuringGame.onclick = function () {
-        if (typeof state !== 'undefined' && state === 'playing') {
+        if (typeof window.satSprintGetState === 'function' && window.satSprintGetState() === 'playing') {
             window.satSprintSaveRun('menu');
-            state = 'paused';
+            if (typeof window.satSprintSetState === 'function') window.satSprintSetState('paused');
             pauseScreen.classList.remove('hidden');
         }
     };
 
     continueBtn.onclick = function () {
         pauseScreen.classList.add('hidden');
-        if (typeof state !== 'undefined') state = 'playing';
+        if (typeof window.satSprintSetState === 'function') window.satSprintSetState('playing');
     };
 
     exitRunBtn.onclick = function () {
         pauseScreen.classList.add('hidden');
-        if (typeof state !== 'undefined') state = 'home';
+        if (typeof window.satSprintSetState === 'function') window.satSprintSetState('home');
         setGameplayUI(false);
         if (typeof showHome === 'function') showHome();
     };
@@ -1147,7 +1258,7 @@
 
 (function () {
     window.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && typeof state !== 'undefined' && state === 'playing') {
+        if (e.key === 'Escape' && typeof window.satSprintGetState === 'function' && window.satSprintGetState() === 'playing') {
             document.getElementById('menuDuringGame')?.click();
         }
     });
@@ -1173,13 +1284,21 @@
             if (typeof window.satSprintGetState !== 'function' || window.satSprintGetState() !== 'playing') return false;
             const snapshot = window.satSprintGetRunSnapshot();
             snapshot.reason = reason || 'pause';
-            snapshot.playerName = account.name || 'Player';
+            const playerInfo = typeof window.satSprintGetPlayerInfo === 'function'
+                ? window.satSprintGetPlayerInfo()
+                : { name: 'Player' };
+            snapshot.playerName = playerInfo.name || 'Player';
             localStorage.setItem(KEY, JSON.stringify(snapshot));
             showToast();
             if (window.SAT_SPRINT_REMOTE_SAVE_API || window.SAT_SPRINT_HIGH_SCORE_API) {
-                saveRunRemote(snapshot).then(saved => {
-                    if (!saved) console.warn('Remote save failed or endpoint unavailable.');
-                });
+                const remoteSave = typeof window.satSprintSaveRunRemote === 'function'
+                    ? window.satSprintSaveRunRemote
+                    : null;
+                if (remoteSave) {
+                    remoteSave(snapshot).then(saved => {
+                        if (!saved) console.warn('Remote save failed or endpoint unavailable.');
+                    });
+                }
             }
             return true;
         } catch (e) { console.warn('Could not save run', e); return false; }
@@ -1220,10 +1339,16 @@
     };
 
     document.addEventListener('visibilitychange', function () {
-        if (document.hidden && typeof state !== 'undefined' && state === 'playing') {
+        if (document.hidden && typeof window.satSprintGetState === 'function' && window.satSprintGetState() === 'playing') {
             window.satSprintSaveRun('background');
-            state = 'paused';
             if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+            if (window.satSprintSetState) window.satSprintSetState('paused');
+        } else if (!document.hidden && typeof window.satSprintGetState === 'function' && window.satSprintGetState() === 'paused') {
+            const quizWarningScreen = document.getElementById('quizWarningScreen');
+            const saved = window.satSprintGetSavedRun();
+            if (saved && resumeScreen && resumeScreen.classList.contains('hidden') && (!quizWarningScreen || quizWarningScreen.classList.contains('hidden'))) {
+                window.satSprintShowSavedRun();
+            }
         }
     });
 
@@ -1236,10 +1361,6 @@
 
 (function () {
     const supportScreen = document.getElementById('supportScreen');
-    const pauseScreen = document.getElementById('pauseScreen');
-    const menuBtn = document.getElementById('menuDuringGame');
-    const continueBtn = document.getElementById('continueBtn');
-    const exitBtn = document.getElementById('exitRunBtn');
     const supportBack = document.getElementById('supportBackBtn');
 
     function closeGift() {
@@ -1253,32 +1374,5 @@
         setTimeout(() => cupButton.classList.remove('shake'), 450);
     };
     if (supportBack) supportBack.onclick = closeGift;
-
-    if (menuBtn) menuBtn.onclick = function () {
-        if (typeof state !== 'undefined' && state === 'playing') {
-            window.satSprintSaveRun('menu');
-            state = 'paused';
-            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-            pauseScreen.classList.remove('hidden');
-        }
-    };
-
-    if (continueBtn) continueBtn.onclick = function () {
-        pauseScreen.classList.add('hidden');
-        const saved = window.satSprintGetSavedRun();
-        if (saved) window.satSprintResumeSaved();
-        else {
-            if (typeof state !== 'undefined') state = 'playing';
-            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
-        }
-    };
-
-    if (exitBtn) exitBtn.onclick = function () {
-        pauseScreen.classList.add('hidden');
-        window.satSprintClearSavedRun();
-        if (typeof state !== 'undefined') state = 'home';
-        if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-        if (typeof showHome === 'function') showHome();
-    };
 })();
 
