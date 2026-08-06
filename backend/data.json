@@ -36,6 +36,11 @@
       "savedAt": 1786024651656
     },
     {
+      "name": "Player",
+      "score": 289,
+      "savedAt": 1786030086224
+    },
+    {
       "name": "naka",
       "score": 269,
       "savedAt": 1786008151270
@@ -189,6 +194,11 @@
       "name": "Player",
       "score": 31,
       "savedAt": 1786025190926
+    },
+    {
+      "name": "Player",
+      "score": 31,
+      "savedAt": 1786030066320
     }
   ],
   "runSnapshots": [

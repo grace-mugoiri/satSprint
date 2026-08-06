@@ -222,7 +222,7 @@
     }
 
     function scheduler() {
-        if (!ctx || !musicOn) return;
+        if (!ctx || !musicOn || musicMode === 'idle') return;
         const lookahead = 0.12;
         while (nextNoteTime < ctx.currentTime + lookahead) {
             scheduleNote(nextNoteTime, step);

@@ -59,9 +59,8 @@
     let satsCollected = 0;
     let rewardPoints = 0;
     let quizPending = false;
-    let quizZone = null;
-    const QUIZ_WARNING_TIME = 7; // seconds before quiz to show checkpoint
-    const QUIZ_ZONE_WIDTH = 110;
+    let quizZone = null; // legacy, no longer used
+    let nextQuizAt = 45 + Math.random() * 15;
     const DOUBLE_JUMP_COIN_CHANCE = 0.12;
     const CUP_SHAKE_INTERVAL = 10;
     let cupShakeTimer = CUP_SHAKE_INTERVAL;
@@ -288,6 +287,7 @@
         obstacles = Array.isArray(snapshot.obstacles) ? snapshot.obstacles.map(o => ({ ...o })) : [];
         coins = Array.isArray(snapshot.coins) ? snapshot.coins.map(c => ({ ...c })) : [];
         if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+        quizPending = false;
         state = 'playing';
     }
     window.satSprintGetState = () => state;
@@ -676,9 +676,17 @@
     function maybeQuiz(dt) {
         if (state !== 'playing') return;
         quizTimer += dt;
-        if (quizTimer > 32 && !quizPending) {
+        if (quizTimer >= nextQuizAt && !quizPending) {
             quizTimer = 0;
-            createQuizCheckpoint();
+            nextQuizAt = 45 + Math.random() * 15;
+            quizPending = true;
+            if (!quizWarningDialogOpen) {
+                quizWarningDialogOpen = true;
+                if (window.satSprintSaveRun) window.satSprintSaveRun('quiz-warning');
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                state = 'paused';
+                document.getElementById('quizWarningScreen')?.classList.remove('hidden');
+            }
         }
     }
 
@@ -714,6 +722,7 @@
                     quizScreen.classList.add('hidden');
                     state = 'playing';
                     if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                    quizPending = false;
                 }, 750);
             };
             quizAnswersEl.appendChild(b);
@@ -721,20 +730,20 @@
         quizScreen.classList.remove('hidden');
     }
 
-    function createQuizCheckpoint() {
-        quizZone = { kind: 'quizCheckpoint', x: W + 340, w: QUIZ_ZONE_WIDTH, passed: false };
-        obstacles.push(quizZone);
-        quizPending = true;
-        if (!quizWarningDialogOpen) {
-            quizWarningDialogOpen = true;
-            if (window.satSprintSaveRun) {
-                window.satSprintSaveRun('quiz-warning');
-            }
-            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-            state = 'paused';
-            document.getElementById('quizWarningScreen')?.classList.remove('hidden');
-        }
-    }
+    // function createQuizCheckpoint() {
+    //     quizZone = { kind: 'quizCheckpoint', x: W + 340, w: QUIZ_ZONE_WIDTH, passed: false };
+    //     obstacles.push(quizZone);
+    //     quizPending = true;
+    //     if (!quizWarningDialogOpen) {
+    //         quizWarningDialogOpen = true;
+    //         if (window.satSprintSaveRun) {
+    //             window.satSprintSaveRun('quiz-warning');
+    //         }
+    //         if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+    //         state = 'paused';
+    //         document.getElementById('quizWarningScreen')?.classList.remove('hidden');
+    //     }
+    // }
 
     function hideQuizWarningDialog() {
         document.getElementById('quizWarningScreen')?.classList.add('hidden');
@@ -816,6 +825,7 @@
     if (quizWarningCancelBtn) {
         quizWarningCancelBtn.onclick = function () {
             hideQuizWarningDialog();
+            quizPending = false;
             if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
             state = 'playing';
         };
@@ -963,11 +973,11 @@
         let overGap = false;
         for (const o of obstacles) {
             if (o.kind === 'gap' && pCenterX > o.x + 8 && pCenterX < o.x + o.w - 8) { overGap = true; break; }
-            if (o.kind === 'quizCheckpoint' && !o.passed && pCenterX > o.x + o.w / 2) {
-                o.passed = true;
-                quizZone = null;
-                pauseForQuiz();
-            }
+            // if (o.kind === 'quizCheckpoint' && !o.passed && pCenterX > o.x + o.w / 2) {
+            //     o.passed = true;
+            //     quizZone = null;
+            //     pauseForQuiz();
+            // }
         }
 
         gamePlayer.vy += GRAVITY * dt;
@@ -1008,9 +1018,9 @@
             nextSpawnAt = Math.max(0.55, 1.3 - elapsed * 0.01) + Math.random() * 0.5;
             spawnObstacle();
         }
-        if (!quizPending && quizTimer > QUIZ_WARNING_TIME && !quizZone) {
-            createQuizCheckpoint();
-        }
+        // if (!quizPending && quizTimer > QUIZ_WARNING_TIME && !quizZone) {
+        //     createQuizCheckpoint();
+        // }
 
         for (const o of obstacles) { o.x -= speed * dt; if (o.phase !== undefined) o.phase += dt * 4; }
         obstacles = obstacles.filter(o => o.x + (o.w || 0) > -60);
@@ -1503,13 +1513,20 @@
     };
 
     document.addEventListener('visibilitychange', function () {
-        if (document.hidden && typeof state !== 'undefined' && state === 'playing') {
-            // fixed: show pause screen instead of soft-lock
-            if (window.satSprintPauseRun) window.satSprintPauseRun('background');
-            else {
-                window.satSprintSaveRun('background');
-                state = 'paused';
-                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+        if (document.hidden) {
+            if (window.SatAudio) window.SatAudio.pauseMusic();
+            if (typeof state !== 'undefined' && state === 'playing') {
+                if (window.satSprintPauseRun) window.satSprintPauseRun('background');
+                else {
+                    window.satSprintSaveRun('background');
+                    state = 'paused';
+                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                }
+            }
+        } else {
+            if (typeof state !== 'undefined' && state === 'home' && window.SatAudio) {
+                window.SatAudio.setMusicMode('menu');
+                window.SatAudio.resumeMusic();
             }
         }
     });
@@ -1531,15 +1548,29 @@
     if (cupButton) {
         let cupCooldown = false;
         cupButton.onclick = function () {
-            const core = window.satSprintGetCore ? window.satSprintGetCore() : null;
-            if (!core) return;
             if (cupCooldown) return;
             cupCooldown = true;
             setTimeout(() => cupCooldown = false, 1200);
-            // fixed: update closure state through the core bridge
-            if (window.satSprintBumpCup) window.satSprintBumpCup();
             cupButton.classList.add('shake');
             setTimeout(() => cupButton.classList.remove('shake'), 450);
+
+            const supportScreen = document.getElementById('supportScreen');
+            const pauseScreen = document.getElementById('pauseScreen');
+            if (!supportScreen) return;
+
+            if (typeof state !== 'undefined' && state === 'playing') {
+                if (window.satSprintSaveRun) window.satSprintSaveRun('support');
+                state = 'paused';
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                if (window.SatAudio) window.SatAudio.pauseMusic();
+            }
+
+            if (pauseScreen) pauseScreen.classList.add('hidden');
+            ['homeScreen', 'startScreen', 'overScreen', 'quizScreen', 'lifeScreen', 'walletScreen', 'saveResumeScreen'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            supportScreen.classList.remove('hidden');
         };
     }
 
