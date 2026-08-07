@@ -1367,248 +1367,249 @@
     obstacles = []; coins = []; particles = [];
     buildStars(); buildCity();
     requestAnimationFrame(loop);
-})();
 
-// ============================================================
-// Gameplay UI module — pause / continue / exit (fixed state handling)
-// ============================================================
-// Double-tap top-left to pause (mobile-friendly)
-(function () {
-    let lastTap = 0;
-    document.addEventListener('touchend', function (e) {
-        if (e.changedTouches[0].clientX < 80 && e.changedTouches[0].clientY < 80) {
-            const now = Date.now();
-            if (now - lastTap < 300) {
-                document.getElementById('menuDuringGame')?.click();
-            }
-            lastTap = now;
-        }
-    });
-})();
-(function () {
-    const gameControls = document.getElementById('gameControls');
-    const pauseScreen = document.getElementById('pauseScreen');
-    const supportScreen = document.getElementById('supportScreen');
-    const homeScreen = document.getElementById('homeScreen');
-    const walletScreen = document.getElementById('walletScreen');
-    const lifeScreen = document.getElementById('lifeScreen');
-    const overScreen = document.getElementById('overScreen');
-    const startScreen = document.getElementById('startScreen');
-    const quizScreen = document.getElementById('quizScreen');
-    const menuDuringGame = document.getElementById('menuDuringGame');
-    const continueBtn = document.getElementById('continueBtn');
-    const exitRunBtn = document.getElementById('exitRunBtn');
 
-    function setGameplayUI(on) {
-        gameControls.style.display = on ? 'flex' : 'none';
-    }
-
-    function pauseRun(reason) {
-        if (typeof state !== 'undefined' && state === 'playing') {
-            if (window.satSprintSaveRun) window.satSprintSaveRun(reason || 'menu');
-            state = 'paused';
-            pauseScreen.classList.remove('hidden');
-            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-            if (window.SatAudio) window.SatAudio.pauseMusic();
-        }
-    }
-
-    menuDuringGame.onclick = function () { pauseRun('menu'); };
-
-    continueBtn.onclick = function () {
-        pauseScreen.classList.add('hidden');
-        const saved = window.satSprintGetSavedRun ? window.satSprintGetSavedRun() : null;
-        if (saved) { if (window.satSprintResumeSaved) window.satSprintResumeSaved(); }
-        else {
-            if (typeof state !== 'undefined') state = 'playing';
-            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
-            if (window.SatAudio) window.SatAudio.resumeMusic();
-        }
-    };
-
-    exitRunBtn.onclick = function () {
-        pauseScreen.classList.add('hidden');
-        if (window.satSprintClearSavedRun) window.satSprintClearSavedRun();
-        if (typeof state !== 'undefined') state = 'home';
-        setGameplayUI(false);
-        if (typeof showHome === 'function') showHome();
-    };
-
-    window.satSprintSetGameplayUI = setGameplayUI;
-    window.satSprintPauseRun = pauseRun;
-})();
-
-(function () {
-    window.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && typeof state !== 'undefined' && state === 'playing') {
-            document.getElementById('menuDuringGame')?.click();
-        }
-        // toggle sound with M
-        if ((e.key === 'm' || e.key === 'M') && window.SatAudio) {
-            window.SatAudio.setMusicEnabled(!window.SatAudio.musicEnabled);
-            const btn = document.getElementById('musicToggleBtn');
-            if (btn) btn.textContent = window.SatAudio.musicEnabled ? '🎵 On' : '🎵 Off';
-        }
-    });
-})();
-
-// ============================================================
-// Save & Resume module (fixed: no closure-scoped references)
-// ============================================================
-(function () {
-    const KEY = 'sat_sprint_saved_run_v4';
-    const toast = document.getElementById('saveToast');
-    const resumeScreen = document.getElementById('saveResumeScreen');
-    const savedScore = document.getElementById('savedScore');
-    const savedSats = document.getElementById('savedSats');
-    const savedCharge = document.getElementById('savedCharge');
-
-    function showToast() {
-        if (!toast) return;
-        toast.style.display = 'block';
-        clearTimeout(window.__satToast);
-        window.__satToast = setTimeout(() => toast.style.display = 'none', 1100);
-    }
-
-    window.satSprintSaveRun = function (reason) {
-        try {
-            const core = window.satSprintGetCore ? window.satSprintGetCore() : null;
-            if (typeof window.satSprintGetState !== 'function' || window.satSprintGetState() !== 'playing') return false;
-            const snapshot = window.satSprintGetRunSnapshot();
-            snapshot.reason = reason || 'pause';
-            snapshot.playerName = (core && core.account && core.account.name) || 'Player';
-            localStorage.setItem(KEY, JSON.stringify(snapshot));
-            showToast();
-            if (window.SAT_SPRINT_REMOTE_SAVE_API || window.SAT_SPRINT_HIGH_SCORE_API) {
-                if (core && core.saveRunRemote) {
-                    core.saveRunRemote(snapshot).then(saved => {
-                        if (!saved) console.warn('Remote save failed or endpoint unavailable.');
-                    });
+    // ============================================================
+    // Gameplay UI module — pause / continue / exit (fixed state handling)
+    // ============================================================
+    // Double-tap top-left to pause (mobile-friendly)
+    (function () {
+        let lastTap = 0;
+        document.addEventListener('touchend', function (e) {
+            if (e.changedTouches[0].clientX < 80 && e.changedTouches[0].clientY < 80) {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    document.getElementById('menuDuringGame')?.click();
                 }
+                lastTap = now;
             }
-            return true;
-        } catch (e) { console.warn('Could not save run', e); return false; }
-    };
+        });
+    })();
+    (function () {
+        const gameControls = document.getElementById('gameControls');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const supportScreen = document.getElementById('supportScreen');
+        const homeScreen = document.getElementById('homeScreen');
+        const walletScreen = document.getElementById('walletScreen');
+        const lifeScreen = document.getElementById('lifeScreen');
+        const overScreen = document.getElementById('overScreen');
+        const startScreen = document.getElementById('startScreen');
+        const quizScreen = document.getElementById('quizScreen');
+        const menuDuringGame = document.getElementById('menuDuringGame');
+        const continueBtn = document.getElementById('continueBtn');
+        const exitRunBtn = document.getElementById('exitRunBtn');
 
-    window.satSprintGetSavedRun = function () {
-        try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) { return null }
-    };
-
-    window.satSprintClearSavedRun = function () {
-        localStorage.removeItem(KEY);
-    };
-
-    window.satSprintShowSavedRun = function () {
-        const r = window.satSprintGetSavedRun();
-        if (!r) return false;
-        savedScore.textContent = Math.floor(r.score).toLocaleString();
-        savedSats.textContent = Math.floor(r.sats).toLocaleString();
-        savedCharge.textContent = Math.floor(r.charge) + '%';
-        resumeScreen.classList.remove('hidden');
-        return true;
-    };
-
-    window.satSprintResumeSaved = function () {
-        const r = window.satSprintGetSavedRun();
-        if (!r) return;
-        resumeScreen.classList.add('hidden');
-        if (typeof window.satSprintLoadRunSnapshot === 'function') {
-            window.satSprintLoadRunSnapshot(r);
+        function setGameplayUI(on) {
+            gameControls.style.display = on ? 'flex' : 'none';
         }
-        window.satSprintClearSavedRun();
-        if (window.SatAudio) { window.SatAudio.setMusicMode('game'); window.SatAudio.resumeMusic(); }
-    };
 
-    document.getElementById('resumeSavedBtn').onclick = window.satSprintResumeSaved;
-    document.getElementById('discardSavedBtn').onclick = function () {
-        window.satSprintClearSavedRun();
-        resumeScreen.classList.add('hidden');
-    };
-
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) {
-            if (window.SatAudio) window.SatAudio.pauseMusic();
+        function pauseRun(reason) {
             if (typeof state !== 'undefined' && state === 'playing') {
-                if (window.satSprintPauseRun) window.satSprintPauseRun('background');
-                else {
-                    window.satSprintSaveRun('background');
-                    state = 'paused';
-                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-                }
-            }
-        } else {
-            if (typeof state !== 'undefined' && state === 'home' && window.SatAudio) {
-                window.SatAudio.setMusicMode('menu');
-                window.SatAudio.resumeMusic();
-            }
-        }
-    });
-
-    window.addEventListener('load', function () {
-        setTimeout(function () {
-            if (window.satSprintGetSavedRun()) window.satSprintShowSavedRun();
-        }, 250);
-    });
-})();
-
-// ============================================================
-// Cup button + sound toggles (fixed scoping via satSprintGetCore)
-// ============================================================
-(function () {
-    const cupButton = document.getElementById('cupButton');
-    const supportScreen = document.getElementById('supportScreen');
-
-    if (cupButton) {
-        let cupCooldown = false;
-        cupButton.onclick = function () {
-            if (cupCooldown) return;
-            cupCooldown = true;
-            setTimeout(() => cupCooldown = false, 1200);
-            cupButton.classList.add('shake');
-            setTimeout(() => cupButton.classList.remove('shake'), 450);
-
-            const supportScreen = document.getElementById('supportScreen');
-            const pauseScreen = document.getElementById('pauseScreen');
-            if (!supportScreen) return;
-
-            if (typeof state !== 'undefined' && state === 'playing') {
-                if (window.satSprintSaveRun) window.satSprintSaveRun('support');
+                if (window.satSprintSaveRun) window.satSprintSaveRun(reason || 'menu');
                 state = 'paused';
+                pauseScreen.classList.remove('hidden');
                 if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
                 if (window.SatAudio) window.SatAudio.pauseMusic();
             }
+        }
 
-            if (pauseScreen) pauseScreen.classList.add('hidden');
-            ['homeScreen', 'startScreen', 'overScreen', 'quizScreen', 'lifeScreen', 'walletScreen', 'saveResumeScreen'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.add('hidden');
-            });
-            supportScreen.classList.remove('hidden');
+        menuDuringGame.onclick = function () { pauseRun('menu'); };
+
+        continueBtn.onclick = function () {
+            pauseScreen.classList.add('hidden');
+            const saved = window.satSprintGetSavedRun ? window.satSprintGetSavedRun() : null;
+            if (saved) { if (window.satSprintResumeSaved) window.satSprintResumeSaved(); }
+            else {
+                if (typeof state !== 'undefined') state = 'playing';
+                if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                if (window.SatAudio) window.SatAudio.resumeMusic();
+            }
         };
-    }
 
-    // sound toggles
-    const musicToggleBtn = document.getElementById('musicToggleBtn');
-    const sfxToggleBtn = document.getElementById('sfxToggleBtn');
-    if (musicToggleBtn && window.SatAudio) {
-        musicToggleBtn.addEventListener('click', function () {
-            window.SatAudio.setMusicEnabled(!window.SatAudio.musicEnabled);
-            musicToggleBtn.textContent = window.SatAudio.musicEnabled ? '🎵 On' : '🎵 Off';
-        });
-    }
-    if (sfxToggleBtn && window.SatAudio) {
-        sfxToggleBtn.addEventListener('click', function () {
-            window.SatAudio.setSfxEnabled(!window.SatAudio.sfxEnabled);
-            sfxToggleBtn.textContent = window.SatAudio.sfxEnabled ? '🔊 On' : '🔊 Off';
-        });
-    }
+        exitRunBtn.onclick = function () {
+            pauseScreen.classList.add('hidden');
+            if (window.satSprintClearSavedRun) window.satSprintClearSavedRun();
+            if (typeof state !== 'undefined') state = 'home';
+            setGameplayUI(false);
+            if (typeof showHome === 'function') showHome();
+        };
 
-    // unlock audio on first user gesture anywhere
-    function unlockAudio() {
-        if (window.SatAudio) window.SatAudio.unlock();
-        document.removeEventListener('pointerdown', unlockAudio);
-        document.removeEventListener('keydown', unlockAudio);
-    }
-    document.addEventListener('pointerdown', unlockAudio);
-    document.addEventListener('keydown', unlockAudio);
+        window.satSprintSetGameplayUI = setGameplayUI;
+        window.satSprintPauseRun = pauseRun;
+    })();
+
+    (function () {
+        window.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && typeof state !== 'undefined' && state === 'playing') {
+                document.getElementById('menuDuringGame')?.click();
+            }
+            // toggle sound with M
+            if ((e.key === 'm' || e.key === 'M') && window.SatAudio) {
+                window.SatAudio.setMusicEnabled(!window.SatAudio.musicEnabled);
+                const btn = document.getElementById('musicToggleBtn');
+                if (btn) btn.textContent = window.SatAudio.musicEnabled ? '🎵 On' : '🎵 Off';
+            }
+        });
+    })();
+
+    // ============================================================
+    // Save & Resume module (fixed: no closure-scoped references)
+    // ============================================================
+    (function () {
+        const KEY = 'sat_sprint_saved_run_v4';
+        const toast = document.getElementById('saveToast');
+        const resumeScreen = document.getElementById('saveResumeScreen');
+        const savedScore = document.getElementById('savedScore');
+        const savedSats = document.getElementById('savedSats');
+        const savedCharge = document.getElementById('savedCharge');
+
+        function showToast() {
+            if (!toast) return;
+            toast.style.display = 'block';
+            clearTimeout(window.__satToast);
+            window.__satToast = setTimeout(() => toast.style.display = 'none', 1100);
+        }
+
+        window.satSprintSaveRun = function (reason) {
+            try {
+                const core = window.satSprintGetCore ? window.satSprintGetCore() : null;
+                if (typeof window.satSprintGetState !== 'function' || window.satSprintGetState() !== 'playing') return false;
+                const snapshot = window.satSprintGetRunSnapshot();
+                snapshot.reason = reason || 'pause';
+                snapshot.playerName = (core && core.account && core.account.name) || 'Player';
+                localStorage.setItem(KEY, JSON.stringify(snapshot));
+                showToast();
+                if (window.SAT_SPRINT_REMOTE_SAVE_API || window.SAT_SPRINT_HIGH_SCORE_API) {
+                    if (core && core.saveRunRemote) {
+                        core.saveRunRemote(snapshot).then(saved => {
+                            if (!saved) console.warn('Remote save failed or endpoint unavailable.');
+                        });
+                    }
+                }
+                return true;
+            } catch (e) { console.warn('Could not save run', e); return false; }
+        };
+
+        window.satSprintGetSavedRun = function () {
+            try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) { return null }
+        };
+
+        window.satSprintClearSavedRun = function () {
+            localStorage.removeItem(KEY);
+        };
+
+        window.satSprintShowSavedRun = function () {
+            const r = window.satSprintGetSavedRun();
+            if (!r) return false;
+            savedScore.textContent = Math.floor(r.score).toLocaleString();
+            savedSats.textContent = Math.floor(r.sats).toLocaleString();
+            savedCharge.textContent = Math.floor(r.charge) + '%';
+            resumeScreen.classList.remove('hidden');
+            return true;
+        };
+
+        window.satSprintResumeSaved = function () {
+            const r = window.satSprintGetSavedRun();
+            if (!r) return;
+            resumeScreen.classList.add('hidden');
+            if (typeof window.satSprintLoadRunSnapshot === 'function') {
+                window.satSprintLoadRunSnapshot(r);
+            }
+            window.satSprintClearSavedRun();
+            if (window.SatAudio) { window.SatAudio.setMusicMode('game'); window.SatAudio.resumeMusic(); }
+        };
+
+        document.getElementById('resumeSavedBtn').onclick = window.satSprintResumeSaved;
+        document.getElementById('discardSavedBtn').onclick = function () {
+            window.satSprintClearSavedRun();
+            resumeScreen.classList.add('hidden');
+        };
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                if (window.SatAudio) window.SatAudio.pauseMusic();
+                if (typeof state !== 'undefined' && state === 'playing') {
+                    if (window.satSprintPauseRun) window.satSprintPauseRun('background');
+                    else {
+                        window.satSprintSaveRun('background');
+                        state = 'paused';
+                        if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                    }
+                }
+            } else {
+                if (typeof state !== 'undefined' && state === 'home' && window.SatAudio) {
+                    window.SatAudio.setMusicMode('menu');
+                    window.SatAudio.resumeMusic();
+                }
+            }
+        });
+
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                if (window.satSprintGetSavedRun()) window.satSprintShowSavedRun();
+            }, 250);
+        });
+    })();
+
+    // ============================================================
+    // Cup button + sound toggles (fixed scoping via satSprintGetCore)
+    // ============================================================
+    (function () {
+        const cupButton = document.getElementById('cupButton');
+        const supportScreen = document.getElementById('supportScreen');
+
+        if (cupButton) {
+            let cupCooldown = false;
+            cupButton.onclick = function () {
+                if (cupCooldown) return;
+                cupCooldown = true;
+                setTimeout(() => cupCooldown = false, 1200);
+                cupButton.classList.add('shake');
+                setTimeout(() => cupButton.classList.remove('shake'), 450);
+
+                const supportScreen = document.getElementById('supportScreen');
+                const pauseScreen = document.getElementById('pauseScreen');
+                if (!supportScreen) return;
+
+                if (typeof state !== 'undefined' && state === 'playing') {
+                    if (window.satSprintSaveRun) window.satSprintSaveRun('support');
+                    state = 'paused';
+                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                    if (window.SatAudio) window.SatAudio.pauseMusic();
+                }
+
+                if (pauseScreen) pauseScreen.classList.add('hidden');
+                ['homeScreen', 'startScreen', 'overScreen', 'quizScreen', 'lifeScreen', 'walletScreen', 'saveResumeScreen'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
+                supportScreen.classList.remove('hidden');
+            };
+        }
+
+        // sound toggles
+        const musicToggleBtn = document.getElementById('musicToggleBtn');
+        const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+        if (musicToggleBtn && window.SatAudio) {
+            musicToggleBtn.addEventListener('click', function () {
+                window.SatAudio.setMusicEnabled(!window.SatAudio.musicEnabled);
+                musicToggleBtn.textContent = window.SatAudio.musicEnabled ? '🎵 On' : '🎵 Off';
+            });
+        }
+        if (sfxToggleBtn && window.SatAudio) {
+            sfxToggleBtn.addEventListener('click', function () {
+                window.SatAudio.setSfxEnabled(!window.SatAudio.sfxEnabled);
+                sfxToggleBtn.textContent = window.SatAudio.sfxEnabled ? '🔊 On' : '🔊 Off';
+            });
+        }
+
+        // unlock audio on first user gesture anywhere
+        function unlockAudio() {
+            if (window.SatAudio) window.SatAudio.unlock();
+            document.removeEventListener('pointerdown', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+        }
+        document.addEventListener('pointerdown', unlockAudio);
+        document.addEventListener('keydown', unlockAudio);
+    })
 })();

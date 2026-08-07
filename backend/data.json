@@ -253,6 +253,142 @@
   ],
   "runSnapshots": [
     {
+      "score": 169,
+      "sats": 10,
+      "charge": 100,
+      "elapsed": 11.3334,
+      "distance": 169.84531182950013,
+      "speed": 339.3338,
+      "spawnTimer": 1.1000000000000003,
+      "nextSpawnAt": 1.65869961418918,
+      "hillOffset1": -509.5359354885002,
+      "hillOffset2": -1019.0718709770003,
+      "cityOffset": -1528.607806465498,
+      "starOffset": -203.8143741954,
+      "lightningMode": 4.649099999999988,
+      "quizTimer": 11.3334,
+      "coinCount": 10,
+      "rewardPoints": 200,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 514.58,
+        "vy": 0,
+        "onGround": true,
+        "jumps": 0,
+        "squash": 0.9999910623715312,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "spike",
+          "x": 185.39459615999985,
+          "y": 554.58,
+          "w": 30,
+          "h": 36.93593948944699,
+          "passed": false
+        }
+      ],
+      "coins": [
+        {
+          "x": 225.39459615999982,
+          "y": 404.58000000000004,
+          "r": 14,
+          "taken": false,
+          "bob": 11.312573652277417,
+          "lightning": true
+        },
+        {
+          "x": 205.39459615999985,
+          "y": 464.58000000000004,
+          "r": 10,
+          "taken": false,
+          "bob": 12.022048339841573
+        },
+        {
+          "x": 239.39459615999982,
+          "y": 429.22466094067266,
+          "r": 10,
+          "taken": false,
+          "bob": 8.616607598724107
+        },
+        {
+          "x": 273.39459615999994,
+          "y": 414.58000000000004,
+          "r": 10,
+          "taken": false,
+          "bob": 11.841055161702958
+        },
+        {
+          "x": 307.39459615999994,
+          "y": 429.22466094067266,
+          "r": 10,
+          "taken": false,
+          "bob": 12.17433270563269
+        },
+        {
+          "x": 341.39459616000005,
+          "y": 464.58000000000004,
+          "r": 10,
+          "taken": false,
+          "bob": 11.317794609740046
+        }
+      ],
+      "savedAt": 1786094814517,
+      "reason": "menu",
+      "playerName": "Player"
+    },
+    {
+      "score": 23,
+      "sats": 0,
+      "charge": 0,
+      "elapsed": 1.7667000000000004,
+      "distance": 23.518470046500006,
+      "speed": 272.3669,
+      "spawnTimer": 0.8666000000000003,
+      "nextSpawnAt": 1.5485503478746319,
+      "hillOffset1": -70.55541013950001,
+      "hillOffset2": -141.11082027900002,
+      "cityOffset": -211.66623041849996,
+      "starOffset": -28.222164055799993,
+      "lightningMode": 0,
+      "quizTimer": 1.7667000000000004,
+      "coinCount": 0,
+      "rewardPoints": 0,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 514.58,
+        "vy": 0,
+        "onGround": true,
+        "jumps": 0,
+        "squash": 1,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "spike",
+          "x": 322.0936247199998,
+          "y": 554.58,
+          "w": 64,
+          "h": 54.34122367732924,
+          "passed": false
+        }
+      ],
+      "coins": [
+        {
+          "x": 402.0936247199999,
+          "y": 324.58000000000004,
+          "r": 18,
+          "taken": false,
+          "bob": 5.457360668748465,
+          "lightning": true,
+          "doubleJump": true
+        }
+      ],
+      "savedAt": 1786094802555,
+      "reason": "menu",
+      "playerName": "Player"
+    },
+    {
       "score": 609,
       "sats": 44,
       "charge": 100,
