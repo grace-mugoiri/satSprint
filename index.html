@@ -327,21 +327,29 @@
             left: 14px;
             right: 14px;
             display: none;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: flex-start;
-            z-index: 30;
+            gap: 8px;
+            z-index: 105;
             pointer-events: none;
+        }
+
+        #menuDuringGame {
+            background: rgba(220, 38, 38, 0.92) !important;
+            border-color: rgba(252, 165, 165, 0.6) !important;
+            color: #fff !important;
+            font-size: 17px !important;
+            padding: 10px 16px !important;
         }
 
         #gameControls button {
             pointer-events: auto;
-            font-size: 14px;
-            padding: 10px 14px;
-            border-radius: 16px;
+            font-size: 20px;
+            padding: 10px 16px;
+            border-radius: 12px;
             background: rgba(17, 24, 39, 0.9);
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
         }
 
         #gameControls button.secondary {
@@ -495,7 +503,7 @@
             left: 14px;
             right: 14px;
             display: none;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: flex-start;
             z-index: 105;
             pointer-events: none;
@@ -617,8 +625,8 @@
         </div>
 
         <div id="gameControls">
-            <button id="menuDuringGame" class="secondary">Pause</button>
             <div id="audioToggles">
+                <button id="menuDuringGame" class="secondary" title="Pause (Esc)">⏸</button>
                 <button id="musicToggleBtn">🎵 On</button>
                 <button id="sfxToggleBtn">🔊 On</button>
             </div>
@@ -628,12 +636,12 @@
 
         <div class="overlay hidden" id="pauseScreen">
             <div class="card">
-                <div class="label">RUN PAUSED</div>
-                <h2>Leave this run?</h2>
-                <p>Your current run will end if you exit.</p>
+                <div class="label">⏸ PAUSED</div>
+                <h2>Take a break</h2>
+                <p>Your run is saved. Resume whenever you're ready.</p>
                 <div class="homeButtons">
-                    <button id="continueBtn">Continue</button>
-                    <button id="exitRunBtn" class="secondary">← Exit to Menu</button>
+                    <button id="continueBtn">▶ Resume</button>
+                    <button id="exitRunBtn" class="secondary">⌂ Exit to Menu</button>
                 </div>
             </div>
         </div>
@@ -736,7 +744,7 @@
                             style="margin-top:12px; gap:10px; flex-wrap: wrap; justify-content: center;">
                             <button type="submit" class="submit" name="submit"
                                 title="Pay with BTCPay Server, a Self-Hosted Bitcoin Payment Processor">
-                                <span>Donate with BTCPay</span>
+                                <span>Donate with </span>
                                 <img src="https://btcpay.thecore.africa/img/paybutton/logo.svg" alt="BTCPay logo">
                             </button>
                             <button type="button" id="supportBackBtn" class="secondary">← Cancel</button>

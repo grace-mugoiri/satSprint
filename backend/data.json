@@ -11,9 +11,44 @@
       "savedAt": 1786000560744
     },
     {
+      "name": "Player",
+      "score": 1253,
+      "savedAt": 1786090423318
+    },
+    {
+      "name": "Player",
+      "score": 1071,
+      "savedAt": 1786090695665
+    },
+    {
+      "name": "Player",
+      "score": 1042,
+      "savedAt": 1786091176536
+    },
+    {
+      "name": "Player",
+      "score": 1026,
+      "savedAt": 1786092296077
+    },
+    {
       "name": "naka",
       "score": 965,
       "savedAt": 1786004202259
+    },
+    {
+      "name": "Player",
+      "score": 905,
+      "savedAt": 1786090821098
+    },
+    {
+      "name": "Player",
+      "score": 829,
+      "savedAt": 1786030808974
+    },
+    {
+      "name": "Player",
+      "score": 742,
+      "savedAt": 1786090737796
     },
     {
       "name": "naka",
@@ -37,6 +72,11 @@
     },
     {
       "name": "Player",
+      "score": 321,
+      "savedAt": 1786091032489
+    },
+    {
+      "name": "Player",
       "score": 289,
       "savedAt": 1786030086224
     },
@@ -54,6 +94,11 @@
       "name": "naka",
       "score": 223,
       "savedAt": 1785999735398
+    },
+    {
+      "name": "Player",
+      "score": 196,
+      "savedAt": 1786092072335
     },
     {
       "name": "naka",
@@ -112,6 +157,31 @@
     },
     {
       "name": "Player",
+      "score": 102,
+      "savedAt": 1786091814856
+    },
+    {
+      "name": "Player",
+      "score": 100,
+      "savedAt": 1786092832039
+    },
+    {
+      "name": "Player",
+      "score": 98,
+      "savedAt": 1786091619258
+    },
+    {
+      "name": "Player",
+      "score": 79,
+      "savedAt": 1786092233012
+    },
+    {
+      "name": "Player",
+      "score": 76,
+      "savedAt": 1786091626228
+    },
+    {
+      "name": "Player",
       "score": 73,
       "savedAt": 1786025202091
     },
@@ -122,8 +192,23 @@
     },
     {
       "name": "Player",
+      "score": 57,
+      "savedAt": 1786091838357
+    },
+    {
+      "name": "Player",
       "score": 56,
       "savedAt": 1786029994926
+    },
+    {
+      "name": "Player",
+      "score": 53,
+      "savedAt": 1786091122488
+    },
+    {
+      "name": "Player",
+      "score": 51,
+      "savedAt": 1786091293721
     },
     {
       "name": "naka",
@@ -157,51 +242,176 @@
     },
     {
       "name": "Player",
-      "score": 34,
-      "savedAt": 1786024450863
+      "score": 35,
+      "savedAt": 1786090366272
     },
     {
       "name": "Player",
-      "score": 34,
-      "savedAt": 1786029999821
-    },
-    {
-      "name": "naka",
-      "score": 33,
-      "savedAt": 1786000805440
-    },
-    {
-      "name": "karen",
-      "score": 31,
-      "savedAt": 1785927173827
-    },
-    {
-      "name": "naka",
-      "score": 31,
-      "savedAt": 1785999364307
-    },
-    {
-      "name": "naka",
-      "score": 31,
-      "savedAt": 1785999710481
-    },
-    {
-      "name": "naka",
-      "score": 31,
-      "savedAt": 1786000572227
-    },
-    {
-      "name": "Player",
-      "score": 31,
-      "savedAt": 1786025190926
-    },
-    {
-      "name": "Player",
-      "score": 31,
-      "savedAt": 1786030066320
+      "score": 35,
+      "savedAt": 1786091630542
     }
   ],
   "runSnapshots": [
+    {
+      "score": 609,
+      "sats": 44,
+      "charge": 100,
+      "elapsed": 32.58349999999985,
+      "distance": 609.070327675499,
+      "speed": 487.968299999999,
+      "spawnTimer": 0.7000000000000001,
+      "nextSpawnAt": 1.091901164688195,
+      "hillOffset1": -1827.2109830264963,
+      "hillOffset2": -3654.4219660529925,
+      "cityOffset": -5481.632949079491,
+      "starOffset": -730.8843932105993,
+      "lightningMode": -0.00010000000001642029,
+      "quizTimer": 0,
+      "coinCount": 40,
+      "rewardPoints": 500,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 405.52098399999903,
+        "vy": -283.2599999999903,
+        "onGround": false,
+        "jumps": 1,
+        "squash": 1.0280192170182993,
+        "rot": 0.034991660716214595
+      },
+      "obstacles": [
+        {
+          "kind": "spike",
+          "x": 212.02515844999883,
+          "y": 554.58,
+          "w": 30,
+          "h": 53.366336141252525,
+          "passed": false
+        }
+      ],
+      "coins": [
+        {
+          "x": 232.02515844999897,
+          "y": 464.58000000000004,
+          "r": 10,
+          "taken": false,
+          "bob": 10.309875188761076
+        },
+        {
+          "x": 266.0251584499989,
+          "y": 429.22466094067266,
+          "r": 10,
+          "taken": false,
+          "bob": 9.368275781956102
+        },
+        {
+          "x": 300.0251584499989,
+          "y": 414.58000000000004,
+          "r": 10,
+          "taken": false,
+          "bob": 9.576016072357033
+        },
+        {
+          "x": 334.0251584499988,
+          "y": 429.22466094067266,
+          "r": 10,
+          "taken": false,
+          "bob": 8.540117782864204
+        },
+        {
+          "x": 368.0251584499989,
+          "y": 464.58000000000004,
+          "r": 10,
+          "taken": false,
+          "bob": 4.605251090479144
+        }
+      ],
+      "savedAt": 1786092279212,
+      "reason": "quiz-warning",
+      "playerName": "Player"
+    },
+    {
+      "score": 640,
+      "sats": 42,
+      "charge": 100,
+      "elapsed": 33.865899999999705,
+      "distance": 640.6652516984977,
+      "speed": 496.94929999999795,
+      "spawnTimer": 1.117400000000001,
+      "nextSpawnAt": 1.1777956925413642,
+      "hillOffset1": -2081.3523768929954,
+      "hillOffset2": -4162.704753785991,
+      "cityOffset": -6244.057130678999,
+      "starOffset": -832.5409507571986,
+      "lightningMode": -0.01670000000001388,
+      "quizTimer": 0,
+      "coinCount": 33,
+      "rewardPoints": 530,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 456.23715200000163,
+        "vy": 523.2600000000064,
+        "onGround": false,
+        "jumps": 1,
+        "squash": 1.000507798100257,
+        "rot": 0.05358418345514292
+      },
+      "obstacles": [
+        {
+          "kind": "drone",
+          "x": 1.2325772500008032,
+          "y": 464.9599843729588,
+          "w": 34,
+          "h": 26,
+          "passed": false,
+          "phase": 7.599854783465728
+        }
+      ],
+      "coins": [],
+      "savedAt": 1786091157773,
+      "reason": "quiz-warning",
+      "playerName": "Player"
+    },
+    {
+      "score": 1064,
+      "sats": 114,
+      "charge": 100,
+      "elapsed": 49.24990000000029,
+      "distance": 1064.3622150179976,
+      "speed": 604.6331000000021,
+      "spawnTimer": 0.40009999999999873,
+      "nextSpawnAt": 1.309144054675865,
+      "hillOffset1": -3193.0866450539843,
+      "hillOffset2": -6386.173290107969,
+      "cityOffset": -9579.25993516196,
+      "starOffset": -1277.2346580215967,
+      "lightningMode": 4.266599999999983,
+      "quizTimer": 0,
+      "coinCount": 62,
+      "rewardPoints": 1340,
+      "gamePlayer": {
+        "x": 124.79906249999999,
+        "y": 514.58,
+        "vy": 0,
+        "onGround": true,
+        "jumps": 0,
+        "squash": 0.972765978289473,
+        "rot": 0
+      },
+      "obstacles": [
+        {
+          "kind": "spike",
+          "x": 308.56871364999733,
+          "y": 554.58,
+          "w": 64,
+          "h": 41.90578056753512,
+          "passed": false
+        }
+      ],
+      "coins": [],
+      "savedAt": 1786090680888,
+      "reason": "quiz-warning",
+      "playerName": "Player"
+    },
     {
       "score": 261,
       "sats": 11,

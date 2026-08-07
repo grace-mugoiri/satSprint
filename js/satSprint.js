@@ -60,7 +60,7 @@
     let rewardPoints = 0;
     let quizPending = false;
     let quizZone = null; // legacy, no longer used
-    let nextQuizAt = 45 + Math.random() * 15;
+    let nextQuizAt = 25 + Math.random() * 15;
     const DOUBLE_JUMP_COIN_CHANCE = 0.12;
     const CUP_SHAKE_INTERVAL = 10;
     let cupShakeTimer = CUP_SHAKE_INTERVAL;
@@ -678,7 +678,7 @@
         quizTimer += dt;
         if (quizTimer >= nextQuizAt && !quizPending) {
             quizTimer = 0;
-            nextQuizAt = 45 + Math.random() * 15;
+            nextQuizAt = 25 + Math.random() * 15;
             quizPending = true;
             if (!quizWarningDialogOpen) {
                 quizWarningDialogOpen = true;
@@ -730,20 +730,20 @@
         quizScreen.classList.remove('hidden');
     }
 
-    // function createQuizCheckpoint() {
-    //     quizZone = { kind: 'quizCheckpoint', x: W + 340, w: QUIZ_ZONE_WIDTH, passed: false };
-    //     obstacles.push(quizZone);
-    //     quizPending = true;
-    //     if (!quizWarningDialogOpen) {
-    //         quizWarningDialogOpen = true;
-    //         if (window.satSprintSaveRun) {
-    //             window.satSprintSaveRun('quiz-warning');
-    //         }
-    //         if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-    //         state = 'paused';
-    //         document.getElementById('quizWarningScreen')?.classList.remove('hidden');
-    //     }
-    // }
+    function createQuizCheckpoint() {
+        quizZone = { kind: 'quizCheckpoint', x: W + 340, w: QUIZ_ZONE_WIDTH, passed: false };
+        obstacles.push(quizZone);
+        quizPending = true;
+        if (!quizWarningDialogOpen) {
+            quizWarningDialogOpen = true;
+            if (window.satSprintSaveRun) {
+                window.satSprintSaveRun('quiz-warning');
+            }
+            if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+            state = 'paused';
+            document.getElementById('quizWarningScreen')?.classList.remove('hidden');
+        }
+    }
 
     function hideQuizWarningDialog() {
         document.getElementById('quizWarningScreen')?.classList.add('hidden');
@@ -1372,6 +1372,19 @@
 // ============================================================
 // Gameplay UI module — pause / continue / exit (fixed state handling)
 // ============================================================
+// Double-tap top-left to pause (mobile-friendly)
+(function () {
+    let lastTap = 0;
+    document.addEventListener('touchend', function (e) {
+        if (e.changedTouches[0].clientX < 80 && e.changedTouches[0].clientY < 80) {
+            const now = Date.now();
+            if (now - lastTap < 300) {
+                document.getElementById('menuDuringGame')?.click();
+            }
+            lastTap = now;
+        }
+    });
+})();
 (function () {
     const gameControls = document.getElementById('gameControls');
     const pauseScreen = document.getElementById('pauseScreen');
