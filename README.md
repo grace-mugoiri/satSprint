@@ -4,7 +4,8 @@ A fast-paced Bitcoin-themed arcade runner where you dodge obstacles, collect sat
 
 ## 🎮 Play
 
-**Live game:sprint.onrender.com
+**Live game: 
+- https://sprint.onrender.com
 
 SAT SPRINT is designed as a browser game first, with plans to expand to mobile platforms.
 
