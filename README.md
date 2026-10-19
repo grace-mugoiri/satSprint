@@ -4,8 +4,7 @@ A fast-paced Bitcoin-themed arcade runner where you dodge obstacles, collect sat
 
 ## 🎮 Play
 
-**Live game: 
-- https://sprint.onrender.com
+**Live game:** https://satsprint.onrender.com
 
 SAT SPRINT is designed as a browser game first, with plans to expand to mobile platforms.
 
@@ -70,8 +69,20 @@ Purely for educational purposes.
 ### Frontend
 Open `index.html` in a browser or serve the project folder from a simple static server.
 
-### Backend stub
-A minimal backend is available in `backend/` for live high-score and saved-run sync.
+### Shared scores and saved runs on Render
+
+The browser game can use a shared backend for high scores, saved runs, live player progress, and leaderboard broadcasts. The Render setup is described in `render.yaml`: it creates a small Node web service and a PostgreSQL database. PostgreSQL is required for scores to survive service restarts; Render's free Postgres expires after 30 days, so the Blueprint selects a paid database plan.
+
+After the API service is created, set `window.SAT_SPRINT_API_BASE_URL` in `js/config.js` to the public URL Render assigns to the `satsprint-api` service. The API allows requests from the existing game site at `https://satsprint.onrender.com`.
+
+To provision the backend:
+
+1. Push the repository, including `render.yaml`, to GitHub.
+2. Open the Render Blueprint page for this repository and review the listed services and database price.
+3. Add billing information to the Render workspace if prompted, then apply the Blueprint to create the API and database.
+4. Set `js/config.js` to the API URL Render shows, commit and push that change, and wait for the existing static site to redeploy.
+
+The Node backend still supports local JSON-file persistence when `DATABASE_URL` is not set. To run it locally:
 
 1. Change to the backend folder:
    ```bash

@@ -1,8 +1,9 @@
 (function () {
     'use strict';
     if (typeof window !== 'undefined' && window.location && /^https?:/.test(window.location.protocol)) {
-        window.SAT_SPRINT_HIGH_SCORE_API = window.SAT_SPRINT_HIGH_SCORE_API || '/api/high-scores';
-        window.SAT_SPRINT_REMOTE_SAVE_API = window.SAT_SPRINT_REMOTE_SAVE_API || '/api/run-snapshot';
+        const apiBase = String(window.SAT_SPRINT_API_BASE_URL || '').replace(/\/+$/, '');
+        window.SAT_SPRINT_HIGH_SCORE_API = window.SAT_SPRINT_HIGH_SCORE_API || `${apiBase}/api/high-scores`;
+        window.SAT_SPRINT_REMOTE_SAVE_API = window.SAT_SPRINT_REMOTE_SAVE_API || `${apiBase}/api/run-snapshot`;
     }
 
     // ============================================================
@@ -332,7 +333,9 @@
         }, POLL_MS);
 
         (function setupWebSocket() {
-            const defaultWs = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws';
+            const apiOrigin = window.SAT_SPRINT_API_BASE_URL ? new URL(window.SAT_SPRINT_API_BASE_URL) : location;
+            const wsProtocol = apiOrigin.protocol === 'https:' ? 'wss:' : 'ws:';
+            const defaultWs = `${wsProtocol}//${apiOrigin.host}/ws`;
             const wsUrl = window.SAT_SPRINT_WS_URL || defaultWs;
             if (!wsUrl) return;
             let ws;
