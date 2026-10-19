@@ -44,7 +44,6 @@
     const walletPoints = document.getElementById('walletPoints');
     const walletReward = document.getElementById('walletReward');
     const playerNameInput = document.getElementById('playerName');
-    const highScoresList = document.getElementById('highScoresList');
     const streakEl = document.getElementById('streak');
     const lightningEl = document.getElementById('lightning');
     const quizScreen = document.getElementById('quizScreen');
@@ -68,7 +67,6 @@
     let quizWarningDialogOpen = false;
 
     const STORE_KEY = 'sat_sprint_player_v3';
-    const HIGH_SCORES_KEY = 'sat_sprint_high_scores_v1';
     const defaultPlayer = {
         name: '',
         lives: 10,
@@ -80,52 +78,12 @@
         virtualRewardBalance: 0
     };
     let account = { ...defaultPlayer };
-    let highScores = [];
-    let highScoresPage = 0;
-    const HIGHSCORES_PER_PAGE = 5;
+    const scores = window.SatSprintHighScores;
+    const cleanName = scores.cleanName;
+    const esc = scores.escapeHtml;
     try { account = { ...defaultPlayer, ...(JSON.parse(localStorage.getItem(STORE_KEY)) || {}) }; } catch (e) { }
     function savePlayer() { localStorage.setItem(STORE_KEY, JSON.stringify(account)); }
 
-    // ============================================================
-    // Sanitization (XSS fix) — shared with live players rendering
-    // ============================================================
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-    function cleanName(name) {
-        return String(name || '')
-            .replace(/[<>&"'/\\]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .slice(0, 16) || 'Player';
-    }
-
-    async function fetchRemoteHighScores() {
-        const api = window.SAT_SPRINT_HIGH_SCORE_API;
-        if (!api) return null;
-        try {
-            const res = await fetch(api, { method: 'GET', headers: { 'Accept': 'application/json' } });
-            if (!res.ok) return null;
-            const data = await res.json();
-            return Array.isArray(data) ? data : null;
-        } catch (e) {
-            return null;
-        }
-    }
-    async function loadHighScores() {
-        let remoteScores = await fetchRemoteHighScores();
-        if (remoteScores && remoteScores.length) {
-            highScores = remoteScores.map(e => ({ name: cleanName(e.name), score: Number(e.score) || 0 }));
-        } else {
-            try { highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY) || '[]') || []; } catch (e) { highScores = []; }
-            highScores = highScores.map(e => ({ name: cleanName(e.name), score: Number(e.score) || 0 }));
-        }
-        highScoresPage = 0;
-        renderHighScores();
-    }
-    function saveHighScores() { try { localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(highScores)); } catch (e) { } }
     async function saveRunRemote(snapshot) {
         const api = window.SAT_SPRINT_REMOTE_SAVE_API || window.SAT_SPRINT_HIGH_SCORE_API;
         if (!api) return false;
@@ -134,48 +92,6 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: 'run_snapshot', payload: snapshot })
-            });
-            return res.ok;
-        } catch (e) {
-            return false;
-        }
-    }
-    function getHighScorePageCount() {
-        return Math.max(1, Math.ceil(highScores.length / HIGHSCORES_PER_PAGE));
-    }
-    function renderHighScores() {
-        if (!highScoresList) return;
-        if (!highScores.length) {
-            highScoresList.innerHTML = '<div style="opacity:.7;">No high scores yet.</div>';
-            updateHighScorePager();
-            return;
-        }
-        const pageCount = getHighScorePageCount();
-        highScoresPage = Math.min(highScoresPage, pageCount - 1);
-        const start = highScoresPage * HIGHSCORES_PER_PAGE;
-        const pageItems = highScores.slice(start, start + HIGHSCORES_PER_PAGE);
-        highScoresList.innerHTML = pageItems.map((entry, index) =>
-            `<div>${start + index + 1}. <strong>${esc(entry.name)}</strong> — ${Number(entry.score) || 0}m</div>`
-        ).join('');
-        updateHighScorePager();
-    }
-    function updateHighScorePager() {
-        const pageCount = getHighScorePageCount();
-        const label = document.getElementById('highScorePageLabel');
-        const prevBtn = document.getElementById('highScorePrevBtn');
-        const nextBtn = document.getElementById('highScoreNextBtn');
-        if (label) label.textContent = `${highScoresPage + 1}/${pageCount}`;
-        if (prevBtn) prevBtn.disabled = highScoresPage <= 0;
-        if (nextBtn) nextBtn.disabled = highScoresPage >= pageCount - 1;
-    }
-    async function saveHighScoreRemote(entry) {
-        const api = window.SAT_SPRINT_HIGH_SCORE_API;
-        if (!api) return false;
-        try {
-            const res = await fetch(api, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry)
             });
             return res.ok;
         } catch (e) {
@@ -213,19 +129,7 @@
         playerNameInput.addEventListener('blur', saveNameValue);
         playerNameInput.addEventListener('input', saveNameValue);
     }
-    async function addHighScore(name, score) {
-        const normalized = cleanName(name);
-        const entry = { name: normalized, score };
-        highScores.push(entry);
-        highScores.sort((a, b) => b.score - a.score);
-        highScores = highScores.slice(0, 50);
-        saveHighScores();
-        renderHighScores();
-        const remoteSaved = await saveHighScoreRemote(entry);
-        if (remoteSaved) {
-            loadHighScores();
-        }
-    }
+    function addHighScore(name, score) { return scores.add(name, score); }
     function getRunSnapshot() {
         return {
             score: Math.floor(distance),
@@ -314,7 +218,7 @@
         if (window.SatAudio) window.SatAudio.sfx.coin();
         spawnBurst(gamePlayer.x + gamePlayer.w / 2, gamePlayer.y, '#ffb300', 10, true);
     };
-    loadHighScores();
+    scores.load();
 
     // Periodically refresh remote high scores when a remote API is configured.
     (function setupHighScorePolling() {
@@ -326,7 +230,7 @@
             try {
                 const homeScreenEl = document.getElementById('homeScreen');
                 if (homeScreenEl && homeScreenEl.classList.contains('hidden')) return;
-                loadHighScores();
+                scores.load();
             } catch (e) {
                 // ignore
             }
@@ -386,14 +290,12 @@
                         const msg = JSON.parse(ev.data);
                         if (!msg || !msg.type) return;
                         if (msg.type === 'welcome') {
-                            if (Array.isArray(msg.data)) { highScores = msg.data.map(e => ({ name: cleanName(e.name), score: Number(e.score) || 0 })); renderHighScores(); }
+                            if (Array.isArray(msg.data)) scores.set(msg.data, false);
                             window.SAT_SPRINT_CLIENT_ID = msg.id;
                             return;
                         }
                         if (msg.type === 'high_scores' && Array.isArray(msg.data)) {
-                            highScores = msg.data.map(e => ({ name: cleanName(e.name), score: Number(e.score) || 0 }));
-                            highScoresPage = 0;
-                            renderHighScores();
+                            scores.set(msg.data, true);
                             return;
                         }
                         if (msg.type === 'presence' && msg.id) {
@@ -774,7 +676,7 @@
         homeScreen.classList.remove('hidden');
         setPlayerNameUI();
         setHighScoreSyncReminder();
-        loadHighScores();
+        scores.load();
         updateHomeUI();
         if (window.SatAudio) { window.SatAudio.setMusicMode('menu'); window.SatAudio.startMusic(); }
     }
@@ -853,25 +755,6 @@
     supportBackBtn.onclick = showHome;
     walletBackBtn.onclick = showHome;
     lifeHomeBtn.onclick = showHome;
-    const highScorePrevBtn = document.getElementById('highScorePrevBtn');
-    const highScoreNextBtn = document.getElementById('highScoreNextBtn');
-    if (highScorePrevBtn) {
-        highScorePrevBtn.addEventListener('click', function () {
-            if (highScoresPage > 0) {
-                highScoresPage -= 1;
-                renderHighScores();
-            }
-        });
-    }
-    if (highScoreNextBtn) {
-        highScoreNextBtn.addEventListener('click', function () {
-            const pageCount = getHighScorePageCount();
-            if (highScoresPage < pageCount - 1) {
-                highScoresPage += 1;
-                renderHighScores();
-            }
-        });
-    }
     waitLifeBtn.onclick = () => {
         updateLifeUI();
         if (account.lives > 0) { lifeScreen.classList.add('hidden'); startFromHome(); }

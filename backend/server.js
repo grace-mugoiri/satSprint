@@ -198,7 +198,9 @@ async function saveRunSnapshot(payload) {
 app.get('/', (req, res) => res.sendFile(path.join(rootPath, 'index.html')));
 app.get('/index.html', (req, res) => res.sendFile(path.join(rootPath, 'index.html')));
 app.get('/js/satSprint.js', (req, res) => res.sendFile(path.join(rootPath, 'js', 'satSprint.js')));
+app.get('/js/highScores.js', (req, res) => res.sendFile(path.join(rootPath, 'js', 'highScores.js')));
 app.get('/js/audio.js', (req, res) => res.sendFile(path.join(rootPath, 'js', 'audio.js')));
+app.get('/js/config.js', (req, res) => res.sendFile(path.join(rootPath, 'js', 'config.js')));
 app.get('/manifest.webmanifest', (req, res) => {
     res.set('Content-Type', 'application/manifest+json');
     res.sendFile(path.join(rootPath, 'manifest.webmanifest'));
