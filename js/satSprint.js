@@ -4,6 +4,7 @@
         const apiBase = String(window.SAT_SPRINT_API_BASE_URL || '').replace(/\/+$/, '');
         window.SAT_SPRINT_HIGH_SCORE_API = window.SAT_SPRINT_HIGH_SCORE_API || `${apiBase}/api/high-scores`;
         window.SAT_SPRINT_REMOTE_SAVE_API = window.SAT_SPRINT_REMOTE_SAVE_API || `${apiBase}/api/run-snapshot`;
+        window.SAT_SPRINT_PLAYER_API = window.SAT_SPRINT_PLAYER_API || `${apiBase}/api/players/register`;
     }
 
     // ============================================================
@@ -22,6 +23,9 @@
     const startBtn = document.getElementById('startBtn');
     const retryBtn = document.getElementById('retryBtn');
     const homeScreen = document.getElementById('homeScreen');
+    const onlinePlayersWidget = document.getElementById('onlinePlayersWidget');
+    const onlinePlayersToggle = document.getElementById('onlinePlayersToggle');
+    const onlinePlayersPanel = document.getElementById('onlinePlayersPanel');
     const supportScreen = document.getElementById('supportScreen');
     const walletScreen = document.getElementById('walletScreen');
     const lifeScreen = document.getElementById('lifeScreen');
@@ -44,6 +48,8 @@
     const walletPoints = document.getElementById('walletPoints');
     const walletReward = document.getElementById('walletReward');
     const playerNameInput = document.getElementById('playerName');
+    const registerPlayerBtn = document.getElementById('registerPlayerBtn');
+    const playerIdentityStatus = document.getElementById('playerIdentityStatus');
     const streakEl = document.getElementById('streak');
     const lightningEl = document.getElementById('lightning');
     const quizScreen = document.getElementById('quizScreen');
@@ -69,6 +75,7 @@
     const STORE_KEY = 'sat_sprint_player_v3';
     const defaultPlayer = {
         name: '',
+        playerId: '',
         lives: 10,
         gameSats: 0,
         totalRuns: 0,
@@ -106,17 +113,80 @@
             : 'Scores are stored locally. Add SAT_SPRINT_HIGH_SCORE_API for live sync.';
     }
     function setPlayerNameUI() {
-        if (!playerNameInput) return;
-        playerNameInput.value = account.name || '';
+        if (playerNameInput) playerNameInput.value = account.name || '';
+        if (playerIdentityStatus) {
+            playerIdentityStatus.className = 'identityStatus' + (account.playerId ? ' success' : '');
+            playerIdentityStatus.textContent = account.playerId
+                ? `Your public player ID: ${account.playerId}`
+                : 'Register your name to get a player ID.';
+        }
     }
     function savePlayerName(name) {
-        account.name = cleanName(name);
-        if (!account.name) account.name = 'Player';
+        const nextName = cleanName(name);
+        if (account.playerId && account.name.toLocaleLowerCase() !== nextName.toLocaleLowerCase()) account.playerId = '';
+        account.name = nextName || 'Player';
         savePlayer();
+        if (playerIdentityStatus && !account.playerId) {
+            playerIdentityStatus.className = 'identityStatus';
+            playerIdentityStatus.textContent = 'Register this name to continue with a global player ID.';
+        }
+    }
+    async function registerPlayerName() {
+        const name = cleanName(playerNameInput && playerNameInput.value);
+        if (!playerNameInput || !playerNameInput.value.trim() || !window.SAT_SPRINT_PLAYER_API) {
+            if (playerIdentityStatus) {
+                playerIdentityStatus.className = 'identityStatus error';
+                playerIdentityStatus.textContent = 'Enter a name and connect to the SAT SPRINT server first.';
+            }
+            return;
+        }
+        registerPlayerBtn.disabled = true;
+        if (playerIdentityStatus) {
+            playerIdentityStatus.className = 'identityStatus';
+            playerIdentityStatus.textContent = 'Registering name…';
+        }
+        try {
+            const response = await fetch(window.SAT_SPRINT_PLAYER_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const responseText = await response.text();
+            let result = {};
+            try { result = responseText ? JSON.parse(responseText) : {}; } catch (e) { }
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('Name registration is not available on the server yet. The SAT SPRINT API needs the latest deployment.');
+                }
+                throw new Error(result.error || `Could not register that name (server error ${response.status}).`);
+            }
+            account.name = cleanName(result.name);
+            account.playerId = result.id;
+            savePlayer();
+            setPlayerNameUI();
+            if (window.satSprintSendPresence) window.satSprintSendPresence();
+        } catch (error) {
+            if (playerIdentityStatus) {
+                playerIdentityStatus.className = 'identityStatus error';
+                playerIdentityStatus.textContent = error.message || 'Could not reach the server. Try again.';
+            }
+        } finally {
+            registerPlayerBtn.disabled = false;
+        }
+    }
+    if (registerPlayerBtn) registerPlayerBtn.addEventListener('click', registerPlayerName);
+    if (playerNameInput) {
+        playerNameInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                registerPlayerName();
+            }
+        });
     }
     window.satSprintGetPlayerInfo = function () {
         return {
             name: account.name || 'Player',
+            playerId: account.playerId || null,
             lives: account.lives,
             gameSats: account.gameSats,
             best: account.best
@@ -129,7 +199,7 @@
         playerNameInput.addEventListener('blur', saveNameValue);
         playerNameInput.addEventListener('input', saveNameValue);
     }
-    function addHighScore(name, score) { return scores.add(name, score); }
+    function addHighScore(name, score) { return scores.add(name, score, account.playerId); }
     function getRunSnapshot() {
         return {
             score: Math.floor(distance),
@@ -252,36 +322,54 @@
                 const livePlayers = {};
                 let runProgressTicker = null;
 
+                function sendPresence() {
+                    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                    try { ws.send(JSON.stringify({ type: 'presence', payload: { name: account.name || 'Player' } })); } catch (e) { }
+                }
+                window.satSprintSendPresence = sendPresence;
+
                 function renderLivePlayers() {
-                    const el = document.getElementById('livePlayersList');
+                    const el = document.getElementById('onlinePlayersList');
                     if (!el) return;
                     const items = Object.values(livePlayers)
                         .map(p => ({
                             id: p.id,
+                            playerId: p.playerId || null,
                             name: cleanName(p.name || 'Player'),
                             progress: p.progress || {},
                             lastSeen: p.lastSeen || 0
                         }))
                         .sort((a, b) => (b.progress.score || 0) - (a.progress.score || 0));
-                    if (!items.length) {
-                        el.innerHTML = '<div style="opacity:.7;">No active players</div>';
+                    const uniquePlayers = Array.from(items.reduce((unique, player) => {
+                        const key = player.playerId || player.id;
+                        const previous = unique.get(key);
+                        const previousPlaying = previous && typeof previous.progress.score !== 'undefined';
+                        const playerPlaying = typeof player.progress.score !== 'undefined';
+                        if (!previous || (!previousPlaying && playerPlaying)) unique.set(key, player);
+                        return unique;
+                    }, new Map()).values());
+                    const count = uniquePlayers.length;
+                    const countLabel = document.getElementById('onlinePlayersCount');
+                    const panelCount = document.getElementById('onlinePlayersPanelCount');
+                    if (countLabel) countLabel.textContent = `${count} online`;
+                    if (panelCount) panelCount.textContent = count;
+                    if (!uniquePlayers.length) {
+                        el.innerHTML = '<div style="color:#94a3b8">No one online yet</div>';
                         return;
                     }
-                    const namesSeen = new Set();
-                    el.innerHTML = items.map(p => {
-                        const displayName = namesSeen.has(p.name) ? `${p.name} (${p.id.slice(0, 4)})` : p.name;
-                        namesSeen.add(p.name);
-                        const sc = typeof p.progress.score !== 'undefined' && p.progress.score !== null ? p.progress.score + 'm' : '';
-                        const ds = typeof p.progress.distance !== 'undefined' && p.progress.distance !== null ? ' • ' + Math.floor(p.progress.distance) + 'm' : '';
-                        return `<div><strong>${esc(displayName)}</strong>${sc ? ' — ' + sc : ''}${ds}</div>`;
+                    el.innerHTML = uniquePlayers.map(p => {
+                        const playing = p.progress && typeof p.progress.score !== 'undefined';
+                        const status = playing ? 'playing' : 'online';
+                        const publicId = p.playerId ? p.playerId.slice(0, 8) : p.id.slice(0, 4);
+                        const progress = playing ? ` <span style="margin-left:auto;color:#94a3b8">${Math.floor(p.progress.distance || 0)}m</span>` : '';
+                        return `<div class="onlinePlayer"><span class="onlineDot"></span><strong>${esc(p.name)}</strong><span class="playerIdLabel" title="Full player ID: ${esc(p.playerId || p.id)}">ID ${esc(publicId)}</span><span class="playerStatus">${status}</span>${progress}</div>`;
                     }).join('');
                 }
 
                 ws.addEventListener('open', () => {
                     console.info('SAT SPRINT WS connected to', wsUrl);
-                    const wsStatus = document.getElementById('wsStatus');
-                    if (wsStatus) wsStatus.textContent = 'WS: connected';
-                    try { ws.send(JSON.stringify({ type: 'presence', payload: { name: account.name || 'Player' } })); } catch (e) { }
+                    if (onlinePlayersWidget) onlinePlayersWidget.classList.add('connected');
+                    sendPresence();
                     try { ws.send(JSON.stringify({ type: 'get_active_players' })); } catch (e) { }
                 });
 
@@ -324,8 +412,9 @@
                 ws.addEventListener('close', () => {
                     console.info('SAT SPRINT WS disconnected');
                     if (reconnectTimer) clearTimeout(reconnectTimer);
-                    const wsStatus = document.getElementById('wsStatus');
-                    if (wsStatus) wsStatus.textContent = 'WS: disconnected';
+                    if (onlinePlayersWidget) onlinePlayersWidget.classList.remove('connected');
+                    Object.keys(livePlayers).forEach(id => delete livePlayers[id]);
+                    renderLivePlayers();
                     reconnectTimer = setTimeout(connect, RECONNECT_MS);
                 });
                 ws.addEventListener('error', () => { /* will trigger close */ });
@@ -348,12 +437,20 @@
 
                 const origStartGame = startGame;
                 startGame = function () { origStartGame(); startRunProgressTicker(); };
+                const origStartFromHome = startFromHome;
+                startFromHome = function () {
+                    origStartFromHome();
+                    if (state === 'playing') startRunProgressTicker();
+                    sendPresence();
+                };
                 const origEndGame = endGame;
-                endGame = function () { stopRunProgressTicker(); origEndGame(); };
+                endGame = function () { stopRunProgressTicker(); origEndGame(); sendPresence(); };
+                const origShowHome = showHome;
+                showHome = function () { origShowHome(); sendPresence(); };
 
                 if (playerNameInput) {
-                    playerNameInput.addEventListener('blur', () => { try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'presence', payload: { name: account.name || 'Player' } })); } catch (e) { } });
-                    playerNameInput.addEventListener('input', () => { try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'presence', payload: { name: account.name || 'Player' } })); } catch (e) { } });
+                    playerNameInput.addEventListener('blur', sendPresence);
+                    playerNameInput.addEventListener('input', sendPresence);
                 }
             }
             connect();
@@ -546,7 +643,10 @@
         state = 'dead';
         shakeT = 0.35;
         spawnBurst(gamePlayer.x + gamePlayer.w / 2, gamePlayer.y + gamePlayer.h / 2, '#ff5d5d', 18, false);
-        if (window.SatAudio) window.SatAudio.sfx.death();
+        if (window.SatAudio) {
+            window.SatAudio.sfx.death();
+            window.SatAudio.pauseMusic();
+        }
         const d = Math.floor(distance);
         finalScoreEl.textContent = d;
         coinLineEl.textContent = satsCollected + ' sats';
@@ -589,7 +689,9 @@
                 quizWarningDialogOpen = true;
                 if (window.satSprintSaveRun) window.satSprintSaveRun('quiz-warning');
                 if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+                if (window.SatAudio) window.SatAudio.pauseMusic();
                 state = 'paused';
+                if (window.satSprintSendPresence) window.satSprintSendPresence();
                 document.getElementById('quizWarningScreen')?.classList.remove('hidden');
             }
         }
@@ -597,7 +699,9 @@
 
     function pauseForQuiz() {
         if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
+        if (window.SatAudio) window.SatAudio.pauseMusic();
         state = 'quiz';
+        if (window.satSprintSendPresence) window.satSprintSendPresence();
         quizWarningDialogOpen = false;
         quizPending = false;
         quizTimer = 0;
@@ -627,6 +731,7 @@
                     quizScreen.classList.add('hidden');
                     state = 'playing';
                     if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+                    if (window.SatAudio) window.SatAudio.resumeMusic();
                     quizPending = false;
                 }, 750);
             };
@@ -678,14 +783,16 @@
         setHighScoreSyncReminder();
         scores.load();
         updateHomeUI();
-        if (window.SatAudio) { window.SatAudio.setMusicMode('menu'); window.SatAudio.startMusic(); }
+        if (window.SatAudio) window.SatAudio.setModeIdle();
     }
     function startFromHome() {
-        if (playerNameInput && playerNameInput.value.trim()) {
-            savePlayerName(playerNameInput.value.trim());
-        } else if (!account.name) {
-            account.name = 'Player';
-            savePlayer();
+        if (playerNameInput && playerNameInput.value.trim()) savePlayerName(playerNameInput.value.trim());
+        if (!account.playerId) {
+            if (playerIdentityStatus) {
+                playerIdentityStatus.className = 'identityStatus error';
+                playerIdentityStatus.textContent = 'Register your name first to get a global player ID.';
+            }
+            return;
         }
         if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
         refillLives();
@@ -703,6 +810,7 @@
         if (window.SatAudio) { window.SatAudio.setMusicMode('game'); window.SatAudio.startMusic(); }
     }
     function openLifeScreen() {
+        if (window.SatAudio) window.SatAudio.pauseMusic();
         [homeScreen, startScreen, overScreen, quizScreen, supportScreen, walletScreen].forEach(x => x.classList.add('hidden'));
         lifeScreen.classList.remove('hidden');
         updateLifeUI();
@@ -716,6 +824,14 @@
         lifeTimer.textContent = sec ? 'Free revival in ' + fmtTime(sec) : (account.lives < 10 ? 'A free life is ready.' : '');
         homeTimer.textContent = sec ? 'Next free life in ' + fmtTime(sec) : '';
     }
+    if (onlinePlayersToggle && onlinePlayersPanel) {
+        onlinePlayersToggle.addEventListener('click', function () {
+            const expanded = onlinePlayersToggle.getAttribute('aria-expanded') === 'true';
+            onlinePlayersToggle.setAttribute('aria-expanded', String(!expanded));
+            onlinePlayersPanel.hidden = expanded;
+        });
+    }
+
     const toggleHighScoresBtn = document.getElementById('toggleHighScoresBtn');
     const highScoresBox = document.getElementById('highScoresBox');
     const quizWarningContinueBtn = document.getElementById('quizWarningContinueBtn');
@@ -732,7 +848,9 @@
             hideQuizWarningDialog();
             quizPending = false;
             if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
+            if (window.SatAudio) window.SatAudio.resumeMusic();
             state = 'playing';
+            if (window.satSprintSendPresence) window.satSprintSendPresence();
         };
     }
 
@@ -1293,6 +1411,7 @@
             if (typeof state !== 'undefined' && state === 'playing') {
                 if (window.satSprintSaveRun) window.satSprintSaveRun(reason || 'menu');
                 state = 'paused';
+                if (window.satSprintSendPresence) window.satSprintSendPresence();
                 pauseScreen.classList.remove('hidden');
                 if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
                 if (window.SatAudio) window.SatAudio.pauseMusic();
@@ -1307,6 +1426,7 @@
             if (saved) { if (window.satSprintResumeSaved) window.satSprintResumeSaved(); }
             else {
                 if (typeof state !== 'undefined') state = 'playing';
+                if (window.satSprintSendPresence) window.satSprintSendPresence();
                 if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(true);
                 if (window.SatAudio) window.SatAudio.resumeMusic();
             }
@@ -1363,6 +1483,7 @@
                 const snapshot = window.satSprintGetRunSnapshot();
                 snapshot.reason = reason || 'pause';
                 snapshot.playerName = (core && core.account && core.account.name) || 'Player';
+                snapshot.playerId = (core && core.account && core.account.playerId) || null;
                 localStorage.setItem(KEY, JSON.stringify(snapshot));
                 showToast();
                 if (window.SAT_SPRINT_REMOTE_SAVE_API || window.SAT_SPRINT_HIGH_SCORE_API) {
@@ -1423,8 +1544,7 @@
                     }
                 }
             } else {
-                if (typeof state !== 'undefined' && state === 'home' && window.SatAudio) {
-                    window.SatAudio.setMusicMode('menu');
+                if (typeof state !== 'undefined' && state === 'playing' && window.SatAudio) {
                     window.SatAudio.resumeMusic();
                 }
             }
@@ -1462,6 +1582,7 @@
                     state = 'paused';
                     if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
                     if (window.SatAudio) window.SatAudio.pauseMusic();
+                    if (window.satSprintSendPresence) window.satSprintSendPresence();
                 }
 
                 if (pauseScreen) pauseScreen.classList.add('hidden');

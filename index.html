@@ -494,6 +494,59 @@
         #cupButton.shake {
             transform: translateY(-2px) rotate(-5deg);
         }
+
+
+        #homeScreen {
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: clamp(14px, 4vh, 28px) 16px;
+            background: radial-gradient(ellipse at 50% 15%, rgba(247, 147, 26, .16), transparent 58%), rgba(8, 12, 20, .78);
+        }
+
+        #homeScreen .card {
+            max-width: 390px;
+            max-height: calc(100dvh - 32px);
+            overflow-y: auto;
+            padding: clamp(20px, 5vw, 28px);
+            background: linear-gradient(155deg, rgba(22, 32, 48, .98), rgba(12, 18, 30, .98));
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 24px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, .52), inset 0 1px rgba(255, 255, 255, .06);
+        }
+
+        #homeScreen .card h1 { font-size: clamp(27px, 7vw, 34px); color: #ffae42; letter-spacing: .2px; }
+        #homeScreen .introCopy { max-width: 300px; margin: 8px auto 15px; font-size: 12px; line-height: 1.55; opacity: .68; }
+        #homeScreen .rewardBox { background: rgba(255, 255, 255, .045); border-color: rgba(255, 255, 255, .09); border-radius: 16px; }
+        #playerName { outline: none; transition: border-color .18s ease, box-shadow .18s ease; }
+        #playerName:focus { border-color: rgba(247, 147, 26, .85) !important; box-shadow: 0 0 0 3px rgba(247, 147, 26, .14); }
+        #registerPlayerBtn { width: 100%; margin-top: 9px; padding: 9px 12px; border-bottom-width: 3px; font-size: 13px; }
+        .identityStatus { min-height: 16px; margin-top: 8px; color: #cbd5e1; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+        .identityStatus.success { color: #86efac; }
+        .identityStatus.error { color: #fca5a5; }
+        .identityNote { margin-top: 4px; color: #94a3b8; font-size: 10px; line-height: 1.4; }
+        .playerIdLabel { color: #94a3b8; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+        #homeScreen button { border-radius: 14px; transition: filter .18s ease, transform .18s ease; }
+        #homeScreen button:hover { filter: brightness(1.08); }
+
+        #onlinePlayersWidget { position: absolute; z-index: 42; left: 12px; bottom: 14px; pointer-events: auto; color: #f8fafc; font-size: 11px; }
+        #onlinePlayersToggle { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 999px; background: rgba(10, 16, 27, .88); color: white; font: inherit; font-size: 11px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer; }
+        #onlinePlayersToggle .onlineDot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #64748b; }
+        #onlinePlayersWidget.connected #onlinePlayersToggle .onlineDot { background: #4ade80; box-shadow: 0 0 9px #4ade8080; }
+        #onlinePlayersPanel { position: absolute; bottom: 48px; left: 0; width: min(220px, calc(100vw - 40px)); padding: 12px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 16px; background: rgba(10, 16, 27, .96); box-shadow: 0 16px 38px rgba(0, 0, 0, .42); backdrop-filter: blur(14px); }
+        #onlinePlayersPanel[hidden] { display: none; }
+        #onlinePlayersPanel .onlineHeading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #e2e8f0; font-weight: 700; }
+        #onlinePlayersList { display: grid; gap: 6px; max-height: 140px; overflow: auto; }
+        .onlinePlayer { display: flex; align-items: center; gap: 7px; color: #cbd5e1; }
+        .onlinePlayer .onlineDot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+        .playerStatus { margin-left: auto; color: #94a3b8; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; }
+
+        @media (max-height: 650px) {
+            #homeScreen { align-items: flex-start; }
+            #homeScreen .card { margin: auto; }
+            #homeScreen .stats { margin: 10px 0 14px; }
+            #homeScreen .homeButtons { gap: 7px; margin-top: 10px; }
+            #homeScreen button { padding-top: 11px; padding-bottom: 11px; }
+        }
     </style>
 
     <style>
@@ -662,11 +715,14 @@
             <div class="card">
                 <div class="label">⚡ SAT SPRINT</div>
                 <h1>Bitcoin. Speed. Sats.</h1>
-                <p>Run, collect virtual sats, charge Lightning, learn Bitcoin and climb the leaderboard.</p>
+                <p class="introCopy">Run, collect virtual sats, charge Lightning, learn Bitcoin and climb the leaderboard.</p>
                 <div class="rewardBox" style="margin-bottom:14px; text-align:left;">
-                    <div class="label">PLAYER NAME</div>
-                    <input id="playerName" type="text" maxlength="16" placeholder="Your name"
+                    <label class="label" for="playerName">GLOBAL PLAYER NAME</label>
+                    <input id="playerName" type="text" maxlength="16" autocomplete="nickname" placeholder="Choose a name"
                         style="width:100%; margin-top:10px; padding:12px 14px; border-radius:14px; border:1px solid rgba(247,147,26,.35); background:#0f172a; color:#fff; font-size:15px;" />
+                    <button id="registerPlayerBtn" class="secondary" type="button">Register / use this name</button>
+                    <div id="playerIdentityStatus" class="identityStatus" role="status" aria-live="polite">Register your name to get a player ID.</div>
+                    <div class="identityNote">No password: anyone entering this name will use the same player identity.</div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px;">
                     <button id="toggleHighScoresBtn" class="secondary" type="button">Show High Scores</button>
@@ -675,13 +731,6 @@
                     <span class="label">HIGH SCORES</span>
                     <div id="highScoresList" class="tipNote"
                         style="margin-top:10px; text-align:left; line-height:1.55;"></div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-                        <div id="wsStatus" class="statusPill" style="font-size:11px; padding:4px 8px;">WS: disconnected
-                        </div>
-                        <div id="livePlayersList" class="tipNote"
-                            style="flex:1; margin-top:0; text-align:left; line-height:1.4; font-style:italic; opacity:.9;">
-                        </div>
-                    </div>
                     <div id="highScoresPager" class="supportActions" style="margin-top:12px;">
                         <button id="highScorePrevBtn" class="secondary">← Prev</button>
                         <span id="highScorePageLabel"
@@ -710,6 +759,18 @@
             </div>
         </div>
 
+
+        <aside id="onlinePlayersWidget" aria-label="Players online">
+            <button id="onlinePlayersToggle" type="button" aria-expanded="false" aria-controls="onlinePlayersPanel">
+                <span class="onlineDot" aria-hidden="true"></span>
+                <span id="onlinePlayersCount">0 online</span>
+                <span aria-hidden="true">▴</span>
+            </button>
+            <div id="onlinePlayersPanel" hidden>
+                <div class="onlineHeading"><span>Players online</span><span id="onlinePlayersPanelCount">0</span></div>
+                <div id="onlinePlayersList"><span style="color:#94a3b8">Connecting…</span></div>
+            </div>
+        </aside>
 
         <div class="overlay hidden" id="supportScreen">
             <div class="card">

@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto');
 const WebSocket = require('ws');
 const { Pool } = require('pg');
 
@@ -64,7 +65,7 @@ function rateLimited(req) {
     return bucket.count > RATE_LIMIT;
 }
 
-let data = { highScores: [], runSnapshots: [] };
+let data = { highScores: [], runSnapshots: [], players: {} };
 if (!pool) {
     try {
         const raw = fs.readFileSync(dataPath, 'utf8');
@@ -72,6 +73,39 @@ if (!pool) {
     } catch (error) {
         console.warn('Could not load backend data file, starting with fresh data.');
     }
+}
+
+function normalizeName(name) {
+    return sanitizeName(name).toLocaleLowerCase('en-US');
+}
+
+async function getOrCreatePlayer(name) {
+    const displayName = sanitizeName(name);
+    const nameKey = normalizeName(displayName);
+    if (pool) {
+        const result = await pool.query(`
+            INSERT INTO players (id, name, name_key, created_at)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (name_key) DO UPDATE SET name = players.name
+            RETURNING id::text AS id, name
+        `, [crypto.randomUUID(), displayName, nameKey, Date.now()]);
+        return result.rows[0];
+    }
+
+    data.players = data.players || {};
+    if (data.players[nameKey]) return data.players[nameKey];
+    const player = { id: crypto.randomUUID(), name: displayName, createdAt: Date.now() };
+    data.players[nameKey] = player;
+    persistData();
+    return player;
+}
+
+async function getSocketPlayer(socket, name) {
+    const nameKey = normalizeName(name);
+    if (socket.playerAccount && socket.playerAccount.nameKey === nameKey) return socket.playerAccount;
+    const player = await getOrCreatePlayer(name);
+    socket.playerAccount = { ...player, nameKey };
+    return socket.playerAccount;
 }
 
 function persistData() {
@@ -86,13 +120,24 @@ function persistData() {
 async function loadPersistedData() {
     if (!pool) return;
     await pool.query(`
+        CREATE TABLE IF NOT EXISTS players (
+            id UUID PRIMARY KEY,
+            name VARCHAR(16) NOT NULL,
+            name_key TEXT NOT NULL UNIQUE,
+            created_at BIGINT NOT NULL
+        )
+    `);
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS high_scores (
             id BIGSERIAL PRIMARY KEY,
             name VARCHAR(16) NOT NULL,
+            player_id UUID REFERENCES players(id) ON DELETE SET NULL,
             score INTEGER NOT NULL CHECK (score > 0),
             saved_at BIGINT NOT NULL
         )
     `);
+    await pool.query('ALTER TABLE high_scores ADD COLUMN IF NOT EXISTS player_id UUID REFERENCES players(id) ON DELETE SET NULL');
+    await pool.query('CREATE INDEX IF NOT EXISTS high_scores_player_id_idx ON high_scores(player_id)');
     await pool.query(`
         CREATE TABLE IF NOT EXISTS run_snapshots (
             id BIGSERIAL PRIMARY KEY,
@@ -140,11 +185,25 @@ async function loadPersistedData() {
         }
     }
 
+    const playerMigrationKey = 'backfill-player-ids-v1';
+    const playerMigration = await pool.query('SELECT migration_key FROM app_migrations WHERE migration_key = $1', [playerMigrationKey]);
+    if (!playerMigration.rowCount) {
+        const oldNames = await pool.query('SELECT DISTINCT name FROM high_scores WHERE player_id IS NULL');
+        for (const row of oldNames.rows) {
+            const player = await getOrCreatePlayer(row.name);
+            await pool.query(
+                'UPDATE high_scores SET player_id = $1 WHERE player_id IS NULL AND lower(name) = $2',
+                [player.id, normalizeName(row.name)]
+            );
+        }
+        await pool.query('INSERT INTO app_migrations (migration_key, applied_at) VALUES ($1, $2)', [playerMigrationKey, Date.now()]);
+    }
+
     const [scores, snapshots] = await Promise.all([
-        pool.query('SELECT name, score, saved_at AS "savedAt" FROM high_scores ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50'),
+        pool.query('SELECT name, player_id::text AS "playerId", score, saved_at AS "savedAt" FROM high_scores ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50'),
         pool.query('SELECT payload, saved_at AS "savedAt" FROM run_snapshots ORDER BY saved_at DESC, id DESC LIMIT 100')
     ]);
-    data.highScores = scores.rows.map(row => ({ name: row.name, score: Number(row.score), savedAt: Number(row.savedAt) }));
+    data.highScores = scores.rows.map(row => ({ name: row.name, playerId: row.playerId, score: Number(row.score), savedAt: Number(row.savedAt) }));
     data.runSnapshots = snapshots.rows.map(row => ({ ...row.payload, savedAt: Number(row.savedAt) }));
 }
 
@@ -156,7 +215,7 @@ async function saveHighScore(entry) {
         persistData();
         return;
     }
-    await pool.query('INSERT INTO high_scores (name, score, saved_at) VALUES ($1, $2, $3)', [entry.name, entry.score, entry.savedAt]);
+    await pool.query('INSERT INTO high_scores (name, player_id, score, saved_at) VALUES ($1, $2, $3, $4)', [entry.name, entry.playerId || null, entry.score, entry.savedAt]);
     await pool.query(`
         DELETE FROM high_scores
         WHERE id IN (
@@ -165,8 +224,8 @@ async function saveHighScore(entry) {
             OFFSET 50
         )
     `);
-    const scores = await pool.query('SELECT name, score, saved_at AS "savedAt" FROM high_scores ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50');
-    data.highScores = scores.rows.map(row => ({ name: row.name, score: Number(row.score), savedAt: Number(row.savedAt) }));
+    const scores = await pool.query('SELECT name, player_id::text AS "playerId", score, saved_at AS "savedAt" FROM high_scores ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50');
+    data.highScores = scores.rows.map(row => ({ name: row.name, playerId: row.playerId, score: Number(row.score), savedAt: Number(row.savedAt) }));
 }
 
 async function saveRunSnapshot(payload) {
@@ -229,6 +288,20 @@ app.get('/api/active-players', (req, res) => {
     res.json(players);
 });
 
+app.post('/api/players/register', async (req, res) => {
+    if (rateLimited(req)) return res.status(429).json({ error: 'slow down' });
+    if (!req.body || typeof req.body.name !== 'string' || !req.body.name.trim()) {
+        return res.status(400).json({ error: 'Enter a player name.' });
+    }
+    try {
+        const player = await getOrCreatePlayer(req.body.name);
+        res.json({ id: player.id, name: player.name });
+    } catch (error) {
+        console.error('Failed to register player name:', error);
+        res.status(500).json({ error: 'could not register player name' });
+    }
+});
+
 // Helper to broadcast to connected websocket clients
 function broadcastWS(message) {
     if (!wss) return;
@@ -258,12 +331,14 @@ app.post('/api/high-scores', async (req, res) => {
         return res.status(400).json({ error: 'Expected {name, score} or {type:"run_snapshot", payload}' });
     }
 
-    const entry = {
-        name: sanitizeName(body.name),
-        score: Math.floor(body.score),
-        savedAt: Date.now()
-    };
     try {
+        const player = await getOrCreatePlayer(body.name);
+        const entry = {
+            name: player.name,
+            playerId: player.id,
+            score: Math.floor(body.score),
+            savedAt: Date.now()
+        };
         await saveHighScore(entry);
         broadcastWS({ type: 'high_scores', data: data.highScores.slice(0, 50) });
         res.json({ ok: true });
@@ -339,7 +414,7 @@ wss.on('connection', (socket, req) => {
     wss.activePlayers = wss.activePlayers || {};
     wss.activePlayers[socket._id] = { id: socket._id, connectedAt: Date.now() };
 
-    socket.on('message', (msg) => {
+    socket.on('message', async (msg) => {
         try {
             const parsed = JSON.parse(msg);
             if (!parsed || !parsed.type) return;
@@ -347,10 +422,13 @@ wss.on('connection', (socket, req) => {
 
             if (parsed.type === 'presence') {
                 const payload = parsed.payload || {};
+                const player = await getSocketPlayer(socket, payload.name || 'Player');
                 wss.activePlayers[socket._id] = Object.assign(wss.activePlayers[socket._id] || {}, {
                     id: socket._id,
-                    name: sanitizeName(payload.name || 'Player'),
-                    lastSeen: Date.now()
+                    playerId: player.id,
+                    name: player.name,
+                    lastSeen: Date.now(),
+                    progress: null
                 });
                 broadcastWS({ type: 'presence', id: socket._id, payload: wss.activePlayers[socket._id] });
                 return;
@@ -358,9 +436,11 @@ wss.on('connection', (socket, req) => {
 
             if (parsed.type === 'run_progress') {
                 const payload = parsed.payload || {};
+                const player = await getSocketPlayer(socket, payload.name || 'Player');
                 wss.activePlayers[socket._id] = Object.assign(wss.activePlayers[socket._id] || {}, {
                     id: socket._id,
-                    name: sanitizeName(payload.name || 'Player'),
+                    playerId: player.id,
+                    name: player.name,
                     lastSeen: Date.now(),
                     progress: payload
                 });

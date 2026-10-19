@@ -71,7 +71,7 @@ Open `index.html` in a browser or serve the project folder from a simple static 
 
 ### Shared scores and saved runs with Supabase
 
-The browser game uses a small Node API for shared high scores, saved runs, live player progress, and leaderboard broadcasts. The API runs as a free Render web service, and Supabase provides the persistent PostgreSQL database. The Node backend creates its required tables on first start.
+The browser game uses a small Node API for shared high scores, saved runs, live player progress, name-only player identities, and leaderboard broadcasts. The API runs as a free Render web service, and Supabase provides the persistent PostgreSQL database. The Node backend creates its required tables and migrates existing high scores on first start.
 
 Create a Supabase project, then open **Connect** and select **Session pooler**. Copy its PostgreSQL connection string and replace `[YOUR-PASSWORD]` with the database password you set for the project. Use the session pooler connection because it supports IPv4 connections from Render's network. Keep the connection string private.
 
@@ -104,6 +104,7 @@ The Node backend still supports local JSON-file persistence when `DATABASE_URL` 
 The backend serves `index.html` and the `js/` assets automatically, while exposing:
 - `GET /api/high-scores`
 - `POST /api/high-scores`
+- `POST /api/players/register` — returns the stable public ID for a globally unique name. Names are case-insensitive. There are no passwords, so anyone entering an existing name uses that same identity.
 - `GET /api/run-snapshots`
 - `POST /api/run-snapshot`
 

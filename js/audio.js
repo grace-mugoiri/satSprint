@@ -297,7 +297,10 @@
 
     function setSfxEnabled(on) { sfxOn = on; }
 
-    function setModeIdle() { setMusicMode('idle'); }
+    function setModeIdle() {
+        setMusicMode('idle');
+        stopMusic();
+    }
 
     window.SatAudio = {
         unlock,

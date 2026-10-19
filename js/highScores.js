@@ -27,7 +27,7 @@
             page = Math.min(page, pageCount() - 1);
             const start = page * PER_PAGE;
             list.innerHTML = entries.slice(start, start + PER_PAGE).map((entry, index) =>
-                `<div>${start + index + 1}. <strong>${escapeHtml(entry.name)}</strong> — ${Number(entry.score) || 0}m</div>`
+                `<div>${start + index + 1}. <strong>${escapeHtml(entry.name)}</strong>${entry.playerId ? ` <span class="playerIdLabel" title="Full player ID: ${escapeHtml(entry.playerId)}">ID ${escapeHtml(entry.playerId.slice(0, 8))}</span>` : ''} — ${Number(entry.score) || 0}m</div>`
             ).join('');
         }
 
@@ -53,10 +53,10 @@
     async function load() {
         const remote = await fetchRemote();
         if (remote && remote.length) {
-            entries = remote.map(entry => ({ name: cleanName(entry.name), score: Number(entry.score) || 0 }));
+            entries = remote.map(entry => ({ name: cleanName(entry.name), playerId: entry.playerId || null, score: Number(entry.score) || 0 }));
         } else {
             try { entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') || []; } catch (error) { entries = []; }
-            entries = entries.map(entry => ({ name: cleanName(entry.name), score: Number(entry.score) || 0 }));
+            entries = entries.map(entry => ({ name: cleanName(entry.name), playerId: entry.playerId || null, score: Number(entry.score) || 0 }));
         }
         page = 0;
         render();
@@ -77,8 +77,8 @@
         } catch (error) { return false; }
     }
 
-    async function add(name, score) {
-        const entry = { name: cleanName(name), score };
+    async function add(name, score, playerId) {
+        const entry = { name: cleanName(name), playerId: playerId || null, score };
         entries.push(entry);
         entries.sort((a, b) => b.score - a.score);
         entries = entries.slice(0, 50);
@@ -102,7 +102,7 @@
         pageCount,
         render,
         set(entriesFromServer, resetPage) {
-            entries = entriesFromServer.map(entry => ({ name: cleanName(entry.name), score: Number(entry.score) || 0 }));
+            entries = entriesFromServer.map(entry => ({ name: cleanName(entry.name), playerId: entry.playerId || null, score: Number(entry.score) || 0 }));
             if (resetPage) page = 0;
             render();
         },
