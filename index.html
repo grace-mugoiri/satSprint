@@ -13,18 +13,18 @@
     <title>SAT SPRINT — Bitcoin Runner</title>
     <style>
         :root {
-            --sky-top: #111827;
-            --sky-bot: #2b2118;
-            --hill-far: #3a4652;
-            --hill-near: #263442;
-            --ground: #171717;
+            --sky-top: #20334b;
+            --sky-bot: #493b35;
+            --hill-far: #526b78;
+            --hill-near: #354e5d;
+            --ground: #25292b;
             --ground-top: #f7931a;
             --char: #f7931a;
             --char-dark: #c96b0c;
             --coin: #ffb300;
             --coin-dark: #d18a00;
             --ink: #f8fafc;
-            --card: #111827;
+            --card: #1a2a3d;
             --accent: #f7931a;
         }
 
@@ -126,8 +126,8 @@
         }
 
         button.secondary {
-            background: #1f2937;
-            border: 1px solid rgba(247, 147, 26, .45);
+            background: #2b3c50;
+            border: 1px solid rgba(247, 147, 26, .55);
             box-shadow: none
         }
 
@@ -489,7 +489,7 @@
             overflow-y: auto;
             overscroll-behavior: contain;
             padding: clamp(14px, 4vh, 28px) 16px;
-            background: radial-gradient(ellipse at 50% 15%, rgba(247, 147, 26, .16), transparent 58%), rgba(8, 12, 20, .78);
+            background: radial-gradient(ellipse at 50% 15%, rgba(247, 147, 26, .23), transparent 62%), rgba(16, 25, 39, .72);
         }
 
         #homeScreen .card {
@@ -497,7 +497,7 @@
             max-height: calc(100dvh - 32px);
             overflow-y: auto;
             padding: clamp(20px, 5vw, 28px);
-            background: linear-gradient(155deg, rgba(22, 32, 48, .98), rgba(12, 18, 30, .98));
+            background: linear-gradient(155deg, rgba(37, 53, 73, .98), rgba(22, 34, 51, .98));
             border: 1px solid rgba(255, 255, 255, .1);
             border-radius: 24px;
             box-shadow: 0 24px 80px rgba(0, 0, 0, .52), inset 0 1px rgba(255, 255, 255, .06);
@@ -538,16 +538,16 @@
             width: 100%;
             min-height: 48px;
             padding: 11px 14px;
-            border: 1px solid rgba(125,211,252,.8);
+            border: 1px solid rgba(186,230,253,.9);
             border-bottom: 3px solid #0284c7;
-            background: linear-gradient(135deg, #164e70, #0c3556);
-            color: #f0f9ff;
+            background: linear-gradient(135deg, #1678a8, #155e8a);
+            color: #ffffff;
             font-size: 13px;
             font-weight: 800;
             letter-spacing: .2px;
             box-shadow: 0 0 20px rgba(56,189,248,.13), inset 0 1px rgba(255,255,255,.12);
         }
-        #installAppBtn:hover { border-color: #bae6fd; background: linear-gradient(135deg, #1d668f, #10466d); }
+        #installAppBtn:hover { border-color: #e0f2fe; background: linear-gradient(135deg, #2294c7, #1674a6); }
         #installHelpScreen .card { max-width: 360px; }
         #installHelpText { color: #cbd5e1; font-size: 14px; line-height: 1.6; }
 
@@ -783,10 +783,10 @@
                 <div class="learningProgress">BITCOIN LEARNING LEVEL<strong id="homeLearningLevel">BEGINNER</strong></div>
                 <div class="homeButtons">
                     <button id="homePlayBtn">▶ Play</button>
-                    <button id="installAppBtn" type="button">📲 Add SAT SPRINT to Home Screen</button>
+                    <button id="installAppBtn" type="button">Add SAT SPRINT to Home Screen</button>
                     <div class="homeSecondaryActions">
-                        <button id="supportBtn" class="secondary">⚡ Support</button>
-                        <button id="walletBtn" class="secondary">⚡ Rewards & Wallet</button>
+                        <button id="supportBtn" class="secondary">Support</button>
+                        <button id="walletBtn" class="secondary">Rewards &amp; Wallet</button>
                     </div>
                 </div>
                 <div id="homeTimer" class="timer"></div>

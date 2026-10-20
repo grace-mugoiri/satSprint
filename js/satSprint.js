@@ -583,10 +583,10 @@
     let city = [];
     const SEASON_STAGE_DISTANCE = 150;
     const SEASONS = [
-        { name: 'SPRING', icon: '🌸', particle: 'petal', sky: ['#102039', '#28576a', '#9b6872'], horizonGlow: 'rgba(255,151,190,0.3)', aurora: 'rgba(111,225,185,0.17)', celestial: ['#fff0bb', '#ffc879', '#eb8f50'], farHills: ['#43765e', '#29494b'], nearHills: ['#35634a', '#203c39'], ground: ['#29463a', '#152c29', '#0c191a'], edge: '#ffacd0' },
-        { name: 'SUMMER', icon: '☀', particle: 'spark', sky: ['#082b55', '#12658c', '#f1a45d'], horizonGlow: 'rgba(255,195,92,0.34)', aurora: 'rgba(49,188,216,0.18)', celestial: ['#fff6bd', '#ffd34e', '#f58b24'], farHills: ['#42835d', '#286149'], nearHills: ['#31754c', '#1d4b39'], ground: ['#304d38', '#183328', '#0b1b1d'], edge: '#ffd166' },
-        { name: 'AUTUMN', icon: '🍂', particle: 'leaf', sky: ['#17172f', '#57334a', '#b65f34'], horizonGlow: 'rgba(255,119,55,0.32)', aurora: 'rgba(201,92,95,0.15)', celestial: ['#ffe1b0', '#ffae55', '#d85a2d'], farHills: ['#76543e', '#4e3d3c'], nearHills: ['#67452f', '#392d32'], ground: ['#3b2928', '#231d24', '#11141c'], edge: '#ff873e' },
-        { name: 'WINTER', icon: '❄', particle: 'snow', sky: ['#091b37', '#24547b', '#9cb9c8'], horizonGlow: 'rgba(137,218,255,0.28)', aurora: 'rgba(91,177,255,0.19)', celestial: ['#f3fcff', '#b9e9ff', '#70b9e8'], farHills: ['#577d98', '#34536d'], nearHills: ['#466780', '#293e55'], ground: ['#273e53', '#172b3d', '#0b1727'], edge: '#a5e8ff' }
+        { name: 'SPRING', icon: '🌸', particle: 'petal', sky: ['#24466d', '#43849a', '#c98791'], horizonGlow: 'rgba(255,151,190,0.38)', aurora: 'rgba(111,225,185,0.24)', celestial: ['#fff0bb', '#ffc879', '#eb8f50'], farHills: ['#5b9676', '#3b6668'], nearHills: ['#47835f', '#2d5650'], ground: ['#3d654f', '#24483f', '#152c30'], edge: '#ffacd0' },
+        { name: 'SUMMER', icon: '☀', particle: 'spark', sky: ['#15508a', '#2185ad', '#ffc078'], horizonGlow: 'rgba(255,195,92,0.42)', aurora: 'rgba(49,188,216,0.24)', celestial: ['#fff6bd', '#ffd34e', '#f58b24'], farHills: ['#59a574', '#347b5d'], nearHills: ['#42915d', '#28694a'], ground: ['#456b4a', '#264b3a', '#142d2d'], edge: '#ffd166' },
+        { name: 'AUTUMN', icon: '🍂', particle: 'leaf', sky: ['#39395e', '#805069', '#d97c4a'], horizonGlow: 'rgba(255,119,55,0.4)', aurora: 'rgba(201,92,95,0.21)', celestial: ['#ffe1b0', '#ffae55', '#d85a2d'], farHills: ['#966b4d', '#69504b'], nearHills: ['#81583f', '#503d42'], ground: ['#503a37', '#332a30', '#1e222a'], edge: '#ff873e' },
+        { name: 'WINTER', icon: '❄', particle: 'snow', sky: ['#1c3a62', '#3d77a0', '#c3dce5'], horizonGlow: 'rgba(137,218,255,0.36)', aurora: 'rgba(91,177,255,0.25)', celestial: ['#f3fcff', '#b9e9ff', '#70b9e8'], farHills: ['#719bb8', '#4a7190'], nearHills: ['#5b809b', '#3a5874'], ground: ['#3a5870', '#263f57', '#172a40'], edge: '#a5e8ff' }
     ];
 
     function seasonForDistance(value) {
