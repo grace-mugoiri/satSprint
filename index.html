@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0b1220">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="SAT SPRINT">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <title>SAT SPRINT — Bitcoin Runner</title>
     <style>
         :root {
@@ -481,38 +485,6 @@
             margin: 0;
         }
 
-        #cupButton {
-            position: fixed !important;
-            bottom: 18px !important;
-            right: 18px !important;
-            left: auto !important;
-            top: auto !important;
-            width: 62px;
-            height: 62px;
-            background: radial-gradient(circle at top left, #38bdf8 15%, #0ea5e9 60%, #0284c7 100%);
-            border: 2px solid rgba(255, 255, 255, 0.95);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 28px;
-            z-index: 115;
-            cursor: pointer;
-            box-shadow: 0 22px 48px rgba(15, 23, 42, 0.45), 0 0 0 10px rgba(56, 189, 248, 0.08);
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-        }
-
-        #cupButton:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 26px 52px rgba(15, 23, 42, 0.55), 0 0 0 10px rgba(56, 189, 248, 0.14);
-        }
-
-        #cupButton.shake {
-            transform: translateY(-2px) rotate(-5deg);
-        }
-
-
         #homeScreen {
             overflow-y: auto;
             overscroll-behavior: contain;
@@ -562,6 +534,22 @@
         #homePlayBtn { width: 100%; padding: 13px 18px; }
         .learningProgress { margin: -2px 0 12px; color: #cbd5e1; font-size: 11px; opacity: .82; }
         .learningProgress strong { margin-left: 5px; color: #ffae42; letter-spacing: .5px; }
+        #installAppBtn {
+            width: 100%;
+            min-height: 48px;
+            padding: 11px 14px;
+            border: 1px solid rgba(125,211,252,.8);
+            border-bottom: 3px solid #0284c7;
+            background: linear-gradient(135deg, #164e70, #0c3556);
+            color: #f0f9ff;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .2px;
+            box-shadow: 0 0 20px rgba(56,189,248,.13), inset 0 1px rgba(255,255,255,.12);
+        }
+        #installAppBtn:hover { border-color: #bae6fd; background: linear-gradient(135deg, #1d668f, #10466d); }
+        #installHelpScreen .card { max-width: 360px; }
+        #installHelpText { color: #cbd5e1; font-size: 14px; line-height: 1.6; }
 
         #onlinePlayersWidget { position: absolute; z-index: 42; left: 12px; bottom: 14px; pointer-events: auto; color: #f8fafc; font-size: 11px; }
         #onlinePlayersToggle { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 999px; background: rgba(10, 16, 27, .88); color: white; font: inherit; font-size: 11px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer; }
@@ -720,8 +708,6 @@
             </div>
         </div>
 
-        <div id="cupButton" title="Tap the cup for bonus sats">🏆</div>
-
         <div class="overlay hidden" id="pauseScreen">
             <div class="card">
                 <div class="label">⏸ PAUSED</div>
@@ -797,12 +783,22 @@
                 <div class="learningProgress">BITCOIN LEARNING LEVEL<strong id="homeLearningLevel">BEGINNER</strong></div>
                 <div class="homeButtons">
                     <button id="homePlayBtn">▶ Play</button>
+                    <button id="installAppBtn" type="button">📲 Add SAT SPRINT to Home Screen</button>
                     <div class="homeSecondaryActions">
                         <button id="supportBtn" class="secondary">⚡ Support</button>
                         <button id="walletBtn" class="secondary">⚡ Rewards & Wallet</button>
                     </div>
                 </div>
                 <div id="homeTimer" class="timer"></div>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="installHelpScreen" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle">
+            <div class="card">
+                <div class="label">QUICK ACCESS</div>
+                <h2 id="installHelpTitle">Add SAT SPRINT to your Home Screen</h2>
+                <p id="installHelpText"></p>
+                <button id="closeInstallHelpBtn" class="secondary" type="button">Got it</button>
             </div>
         </div>
 
@@ -967,6 +963,7 @@
     <script src="js/config.js"></script>
     <script src="js/highScores.js"></script>
     <script src="js/satSprint.js"></script>
+    <script src="js/installApp.js"></script>
     <script>
         // PWA: register service worker
         if ('serviceWorker' in navigator) {

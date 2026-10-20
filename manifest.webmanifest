@@ -1,6 +1,7 @@
 {
     "name": "SAT SPRINT — Bitcoin Runner",
     "short_name": "SAT SPRINT",
+    "id": "/",
     "description": "Run, collect sats, charge Lightning and learn Bitcoin in this fast-paced arcade runner.",
     "start_url": "/",
     "scope": "/",

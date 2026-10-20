@@ -67,7 +67,6 @@
     const quizAnswersEl = document.getElementById('quizAnswers');
     const quizFeedbackEl = document.getElementById('quizFeedback');
     const quizHintEl = document.getElementById('quizHint');
-    const cupButton = document.getElementById('cupButton');
     const finalLightningEl = document.getElementById('finalLightning');
     const rewardPointsEl = document.getElementById('rewardPoints');
 
@@ -78,8 +77,6 @@
     let quizZone = null; // legacy, no longer used
     let nextQuizAt = 25 + Math.random() * 15;
     const DOUBLE_JUMP_COIN_CHANCE = 0.12;
-    const CUP_SHAKE_INTERVAL = 10;
-    let cupShakeTimer = CUP_SHAKE_INTERVAL;
     let quizWarningDialogOpen = false;
 
     const STORE_KEY = 'sat_sprint_player_v3';
@@ -318,14 +315,6 @@
             saveRunRemote: saveRunRemote,
             savePlayer: savePlayer
         };
-    };
-    // cup bonus bump — lives in main closure so it can mutate satsCollected
-    window.satSprintBumpCup = function () {
-        if (state !== 'playing' && state !== 'home') return;
-        satsCollected += 5;
-        rewardPoints += 15;
-        if (window.SatAudio) window.SatAudio.sfx.coin();
-        spawnBurst(gamePlayer.x + gamePlayer.w / 2, gamePlayer.y, '#ffb300', 10, true);
     };
     scores.load();
 
@@ -1229,14 +1218,6 @@
         particles = particles.filter(p => p.t < p.life);
 
         if (shakeT > 0) shakeT -= dt;
-        if (cupButton) {
-            cupShakeTimer -= dt;
-            if (cupShakeTimer <= 0) {
-                cupButton.classList.add('shake');
-                setTimeout(() => cupButton.classList.remove('shake'), 350);
-                cupShakeTimer = CUP_SHAKE_INTERVAL + Math.random() * 6;
-            }
-        }
     }
 
     // ---------- draw ----------
@@ -1812,42 +1793,9 @@
     })();
 
     // ============================================================
-    // Cup button + sound toggles (fixed scoping via satSprintGetCore)
+    // Sound toggles
     // ============================================================
     (function () {
-        const cupButton = document.getElementById('cupButton');
-        const supportScreen = document.getElementById('supportScreen');
-
-        if (cupButton) {
-            let cupCooldown = false;
-            cupButton.onclick = function () {
-                if (cupCooldown) return;
-                cupCooldown = true;
-                setTimeout(() => cupCooldown = false, 1200);
-                cupButton.classList.add('shake');
-                setTimeout(() => cupButton.classList.remove('shake'), 450);
-
-                const supportScreen = document.getElementById('supportScreen');
-                const pauseScreen = document.getElementById('pauseScreen');
-                if (!supportScreen) return;
-
-                if (typeof state !== 'undefined' && state === 'playing') {
-                    if (window.satSprintSaveRun) window.satSprintSaveRun('support');
-                    state = 'paused';
-                    if (window.satSprintSetGameplayUI) window.satSprintSetGameplayUI(false);
-                    if (window.SatAudio) window.SatAudio.pauseMusic();
-                    if (window.satSprintSendPresence) window.satSprintSendPresence();
-                }
-
-                if (pauseScreen) pauseScreen.classList.add('hidden');
-                ['homeScreen', 'startScreen', 'overScreen', 'quizScreen', 'lifeScreen', 'walletScreen', 'saveResumeScreen'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.classList.add('hidden');
-                });
-                supportScreen.classList.remove('hidden');
-            };
-        }
-
         // sound toggles
         const musicToggleBtn = document.getElementById('musicToggleBtn');
         const sfxToggleBtn = document.getElementById('sfxToggleBtn');
