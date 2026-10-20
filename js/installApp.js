@@ -15,7 +15,7 @@
     function updateButton() {
         installButton.hidden = isStandalone();
         if (isStandalone()) return;
-        installButton.textContent = installPrompt ? '📲 Install SAT SPRINT' : '📲 Add SAT SPRINT to Home Screen';
+        installButton.textContent = installPrompt ? 'Install SAT SPRINT' : 'Add SAT SPRINT to Home Screen';
     }
 
     function showHelp() {
