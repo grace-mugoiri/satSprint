@@ -11,7 +11,11 @@ const app = express();
 const dataPath = path.join(__dirname, 'data.json');
 const rootPath = path.join(__dirname, '..');
 const webOrigin = process.env.WEB_ORIGIN || 'https://satsprint.onrender.com';
-const allowedOrigins = new Set([webOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000']);
+const allowedOrigins = new Set([
+    webOrigin,
+    'http://localhost:3000', 'http://127.0.0.1:3000',
+    'http://localhost:5500', 'http://127.0.0.1:5500'
+]);
 const pool = process.env.DATABASE_URL
     ? new Pool({
         connectionString: process.env.DATABASE_URL,
@@ -73,14 +77,29 @@ if (!pool) {
     } catch (error) {
         console.warn('Could not load backend data file, starting with fresh data.');
     }
+    data.highScores = canonicalHighScores(data.highScores);
 }
 
 function normalizeName(name) {
     return sanitizeName(name).toLocaleLowerCase('en-US');
 }
 
+function canonicalHighScores(source) {
+    const bestByPlayer = new Map();
+    for (const entry of (Array.isArray(source) ? source : [])) {
+        const key = entry.playerId || normalizeName(entry.name);
+        if (!key || normalizeName(entry.name) === 'player' || !validScore(entry.score)) continue;
+        const current = bestByPlayer.get(key);
+        if (!current || Number(entry.score) > Number(current.score)) bestByPlayer.set(key, entry);
+    }
+    return [...bestByPlayer.values()].sort((a, b) => Number(b.score) - Number(a.score)).slice(0, 50);
+}
+
 async function getOrCreatePlayer(name) {
     const displayName = sanitizeName(name);
+    if (displayName.toLocaleLowerCase('en-US') === 'player') {
+        throw new Error('Choose a name other than Player.');
+    }
     const nameKey = normalizeName(displayName);
     if (pool) {
         const result = await pool.query(`
@@ -190,6 +209,7 @@ async function loadPersistedData() {
     if (!playerMigration.rowCount) {
         const oldNames = await pool.query('SELECT DISTINCT name FROM high_scores WHERE player_id IS NULL');
         for (const row of oldNames.rows) {
+            if (normalizeName(row.name) === 'player') continue;
             const player = await getOrCreatePlayer(row.name);
             await pool.query(
                 'UPDATE high_scores SET player_id = $1 WHERE player_id IS NULL AND lower(name) = $2',
@@ -199,8 +219,24 @@ async function loadPersistedData() {
         await pool.query('INSERT INTO app_migrations (migration_key, applied_at) VALUES ($1, $2)', [playerMigrationKey, Date.now()]);
     }
 
+    // Keep each player's best score only. This also consolidates historical
+    // repeated runs and makes duplicate rows impossible for future writes.
+    const uniqueScoresMigrationKey = 'best-score-per-player-v1';
+    const uniqueScoresMigration = await pool.query('SELECT migration_key FROM app_migrations WHERE migration_key = $1', [uniqueScoresMigrationKey]);
+    if (!uniqueScoresMigration.rowCount) {
+        await pool.query(`
+            DELETE FROM high_scores older
+            USING high_scores newer
+            WHERE older.player_id = newer.player_id
+              AND older.player_id IS NOT NULL
+              AND (older.score < newer.score OR (older.score = newer.score AND (older.saved_at > newer.saved_at OR (older.saved_at = newer.saved_at AND older.id > newer.id))))
+        `);
+        await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS high_scores_player_id_unique ON high_scores(player_id) WHERE player_id IS NOT NULL');
+        await pool.query('INSERT INTO app_migrations (migration_key, applied_at) VALUES ($1, $2)', [uniqueScoresMigrationKey, Date.now()]);
+    }
+
     const [scores, snapshots] = await Promise.all([
-        pool.query('SELECT name, player_id::text AS "playerId", score, saved_at AS "savedAt" FROM high_scores ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50'),
+        pool.query("SELECT name, player_id::text AS \"playerId\", score, saved_at AS \"savedAt\" FROM high_scores WHERE lower(name) <> 'player' ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50"),
         pool.query('SELECT payload, saved_at AS "savedAt" FROM run_snapshots ORDER BY saved_at DESC, id DESC LIMIT 100')
     ]);
     data.highScores = scores.rows.map(row => ({ name: row.name, playerId: row.playerId, score: Number(row.score), savedAt: Number(row.savedAt) }));
@@ -209,13 +245,18 @@ async function loadPersistedData() {
 
 async function saveHighScore(entry) {
     if (!pool) {
-        data.highScores.push(entry);
-        data.highScores.sort((a, b) => b.score - a.score);
-        data.highScores = data.highScores.slice(0, 50);
+        data.highScores = canonicalHighScores([...(data.highScores || []), entry]);
         persistData();
         return;
     }
-    await pool.query('INSERT INTO high_scores (name, player_id, score, saved_at) VALUES ($1, $2, $3, $4)', [entry.name, entry.playerId || null, entry.score, entry.savedAt]);
+    await pool.query(`
+        INSERT INTO high_scores (name, player_id, score, saved_at)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (player_id) WHERE player_id IS NOT NULL DO UPDATE SET
+            name = EXCLUDED.name,
+            score = GREATEST(high_scores.score, EXCLUDED.score),
+            saved_at = CASE WHEN EXCLUDED.score > high_scores.score THEN EXCLUDED.saved_at ELSE high_scores.saved_at END
+    `, [entry.name, entry.playerId || null, entry.score, entry.savedAt]);
     await pool.query(`
         DELETE FROM high_scores
         WHERE id IN (
@@ -224,7 +265,7 @@ async function saveHighScore(entry) {
             OFFSET 50
         )
     `);
-    const scores = await pool.query('SELECT name, player_id::text AS "playerId", score, saved_at AS "savedAt" FROM high_scores ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50');
+    const scores = await pool.query("SELECT name, player_id::text AS \"playerId\", score, saved_at AS \"savedAt\" FROM high_scores WHERE lower(name) <> 'player' ORDER BY score DESC, saved_at ASC, id ASC LIMIT 50");
     data.highScores = scores.rows.map(row => ({ name: row.name, playerId: row.playerId, score: Number(row.score), savedAt: Number(row.savedAt) }));
 }
 
@@ -293,6 +334,9 @@ app.post('/api/players/register', async (req, res) => {
     if (!req.body || typeof req.body.name !== 'string' || !req.body.name.trim()) {
         return res.status(400).json({ error: 'Enter a player name.' });
     }
+    if (normalizeName(req.body.name) === 'player') {
+        return res.status(400).json({ error: 'Choose a name other than Player.' });
+    }
     try {
         const player = await getOrCreatePlayer(req.body.name);
         res.json({ id: player.id, name: player.name });
@@ -329,6 +373,9 @@ app.post('/api/high-scores', async (req, res) => {
 
     if (!body || typeof body.name !== 'string' || !validScore(body.score)) {
         return res.status(400).json({ error: 'Expected {name, score} or {type:"run_snapshot", payload}' });
+    }
+    if (normalizeName(body.name) === 'player') {
+        return res.status(400).json({ error: 'Choose a registered player name.' });
     }
 
     try {

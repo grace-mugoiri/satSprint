@@ -16,6 +16,24 @@
         return String(name || '').replace(/[<>&"'/\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) || 'Player';
     }
 
+    function leaderboardEntries(source) {
+        const bestByPlayer = new Map();
+        (Array.isArray(source) ? source : []).forEach(entry => {
+            const name = cleanName(entry.name);
+            const score = Number(entry.score) || 0;
+            if (!score || name.toLocaleLowerCase() === 'player') return;
+            const key = entry.playerId || name.toLocaleLowerCase();
+            const candidate = { name, playerId: entry.playerId || null, score, savedAt: Number(entry.savedAt) || 0 };
+            const current = bestByPlayer.get(key);
+            if (!current || candidate.score > current.score || (candidate.score === current.score && candidate.savedAt < current.savedAt)) {
+                bestByPlayer.set(key, candidate);
+            }
+        });
+        return [...bestByPlayer.values()]
+            .sort((a, b) => b.score - a.score || a.savedAt - b.savedAt)
+            .slice(0, 50);
+    }
+
     function pageCount() { return Math.max(1, Math.ceil(entries.length / PER_PAGE)); }
 
     function render() {
@@ -27,7 +45,7 @@
             page = Math.min(page, pageCount() - 1);
             const start = page * PER_PAGE;
             list.innerHTML = entries.slice(start, start + PER_PAGE).map((entry, index) =>
-                `<div>${start + index + 1}. <strong>${escapeHtml(entry.name)}</strong>${entry.playerId ? ` <span class="playerIdLabel" title="Full player ID: ${escapeHtml(entry.playerId)}">ID ${escapeHtml(entry.playerId.slice(0, 8))}</span>` : ''} — ${Number(entry.score) || 0}m</div>`
+                `<div class="highScoreRow"><span class="highScoreRank">${start + index + 1}</span><strong>${escapeHtml(entry.name)}</strong><span class="highScoreValue">${Number(entry.score) || 0}m</span></div>`
             ).join('');
         }
 
@@ -52,11 +70,18 @@
 
     async function load() {
         const remote = await fetchRemote();
-        if (remote && remote.length) {
-            entries = remote.map(entry => ({ name: cleanName(entry.name), playerId: entry.playerId || null, score: Number(entry.score) || 0 }));
+        if (window.SAT_SPRINT_HIGH_SCORE_API) {
+            if (Array.isArray(remote)) {
+                entries = leaderboardEntries(remote);
+                updateSyncMessage('Live global leaderboard. Best score per player.');
+            } else {
+                entries = [];
+                updateSyncMessage('Global scores are temporarily unavailable.');
+            }
         } else {
             try { entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') || []; } catch (error) { entries = []; }
-            entries = entries.map(entry => ({ name: cleanName(entry.name), playerId: entry.playerId || null, score: Number(entry.score) || 0 }));
+            entries = leaderboardEntries(entries);
+            updateSyncMessage('Showing scores saved on this device.');
         }
         page = 0;
         render();
@@ -64,6 +89,11 @@
 
     function saveLocal() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch (error) { /* storage may be unavailable */ }
+    }
+
+    function updateSyncMessage(message) {
+        const reminder = document.getElementById('highScoreSyncReminder');
+        if (reminder) reminder.textContent = message;
     }
 
     async function saveRemote(entry) {
@@ -79,12 +109,14 @@
 
     async function add(name, score, playerId) {
         const entry = { name: cleanName(name), playerId: playerId || null, score };
-        entries.push(entry);
-        entries.sort((a, b) => b.score - a.score);
-        entries = entries.slice(0, 50);
+        if (window.SAT_SPRINT_HIGH_SCORE_API) {
+            if (await saveRemote(entry)) await load();
+            else updateSyncMessage('Could not sync this score to the global leaderboard.');
+            return;
+        }
+        entries = leaderboardEntries([...entries, entry]);
         saveLocal();
         render();
-        if (await saveRemote(entry)) load();
     }
 
     document.getElementById('highScorePrevBtn')?.addEventListener('click', function () {
@@ -102,7 +134,7 @@
         pageCount,
         render,
         set(entriesFromServer, resetPage) {
-            entries = entriesFromServer.map(entry => ({ name: cleanName(entry.name), playerId: entry.playerId || null, score: Number(entry.score) || 0 }));
+            entries = leaderboardEntries(entriesFromServer);
             if (resetPage) page = 0;
             render();
         },

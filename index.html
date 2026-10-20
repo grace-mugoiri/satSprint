@@ -515,18 +515,34 @@
         }
 
         #homeScreen .card h1 { font-size: clamp(27px, 7vw, 34px); color: #ffae42; letter-spacing: .2px; }
-        #homeScreen .introCopy { max-width: 300px; margin: 8px auto 15px; font-size: 12px; line-height: 1.55; opacity: .68; }
+        #homeScreen .introCopy { max-width: 300px; margin: 6px auto 12px; font-size: 12px; line-height: 1.45; opacity: .68; }
         #homeScreen .rewardBox { background: rgba(255, 255, 255, .045); border-color: rgba(255, 255, 255, .09); border-radius: 16px; }
+        #playerIdentity { margin-bottom: 10px !important; padding: 12px 14px; }
         #playerName { outline: none; transition: border-color .18s ease, box-shadow .18s ease; }
         #playerName:focus { border-color: rgba(247, 147, 26, .85) !important; box-shadow: 0 0 0 3px rgba(247, 147, 26, .14); }
-        #registerPlayerBtn { width: 100%; margin-top: 9px; padding: 9px 12px; border-bottom-width: 3px; font-size: 13px; }
-        .identityStatus { min-height: 16px; margin-top: 8px; color: #cbd5e1; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+        #registerPlayerBtn { margin-top: 0; padding: 10px 14px; border-bottom-width: 3px; font-size: 13px; white-space: nowrap; }
+        #playerIdentityEditor { display: grid; gap: 8px; }
+        .identityForm { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+        .identityLabel { text-align: left; color: #cbd5e1; font-size: 11px; font-weight: 700; }
+        #registeredPlayerSummary { display: flex; align-items: center; gap: 10px; min-height: 34px; text-align: left; }
+        #registeredPlayerSummary[hidden], #playerIdentityEditor[hidden], #cancelChangePlayerNameBtn[hidden] { display: none; }
+        .identityGreeting { display: flex; flex: 1; align-items: baseline; gap: 7px; min-width: 0; }
+        .identityGreeting span { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+        #registeredPlayerName { overflow: hidden; color: #f8fafc; font-size: 15px; text-overflow: ellipsis; }
+        #changePlayerNameBtn, #cancelChangePlayerNameBtn { padding: 6px 9px; border: 1px solid rgba(255,255,255,.14); background: transparent; color: #cbd5e1; font-size: 11px; }
+        .identityStatus { min-height: 0; color: #cbd5e1; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; text-align: left; }
         .identityStatus.success { color: #86efac; }
         .identityStatus.error { color: #fca5a5; }
-        .identityNote { margin-top: 4px; color: #94a3b8; font-size: 10px; line-height: 1.4; }
-        .playerIdLabel { color: #94a3b8; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .identityNote { color: #94a3b8; font-size: 10px; line-height: 1.35; text-align: left; }
         #homeScreen button { border-radius: 14px; transition: filter .18s ease, transform .18s ease; }
         #homeScreen button:hover { filter: brightness(1.08); }
+        #toggleHighScoresBtn { padding: 8px 12px; font-size: 12px; border-bottom-width: 2px; }
+        .highScoreRow { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+        .highScoreRank { color: #94a3b8; font-variant-numeric: tabular-nums; }
+        .highScoreValue { color: #ffae42; font-weight: 700; font-variant-numeric: tabular-nums; }
+        #homeScreen .homeSecondaryActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        #homeScreen .homeSecondaryActions button { padding: 9px 8px; border-bottom-width: 2px; font-size: 12px; }
+        #homePlayBtn { width: 100%; padding: 13px 18px; }
 
         #onlinePlayersWidget { position: absolute; z-index: 42; left: 12px; bottom: 14px; pointer-events: auto; color: #f8fafc; font-size: 11px; }
         #onlinePlayersToggle { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 999px; background: rgba(10, 16, 27, .88); color: white; font: inherit; font-size: 11px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer; }
@@ -545,7 +561,7 @@
             #homeScreen .card { margin: auto; }
             #homeScreen .stats { margin: 10px 0 14px; }
             #homeScreen .homeButtons { gap: 7px; margin-top: 10px; }
-            #homeScreen button { padding-top: 11px; padding-bottom: 11px; }
+            #homeScreen button { padding-top: 10px; padding-bottom: 10px; }
         }
     </style>
 
@@ -714,15 +730,23 @@
         <div class="overlay" id="homeScreen">
             <div class="card">
                 <div class="label">⚡ SAT SPRINT</div>
-                <h1>Bitcoin. Speed. Sats.</h1>
-                <p class="introCopy">Run, collect virtual sats, charge Lightning, learn Bitcoin and climb the leaderboard.</p>
-                <div class="rewardBox" style="margin-bottom:14px; text-align:left;">
-                    <label class="label" for="playerName">GLOBAL PLAYER NAME</label>
-                    <input id="playerName" type="text" maxlength="16" autocomplete="nickname" placeholder="Choose a name"
-                        style="width:100%; margin-top:10px; padding:12px 14px; border-radius:14px; border:1px solid rgba(247,147,26,.35); background:#0f172a; color:#fff; font-size:15px;" />
-                    <button id="registerPlayerBtn" class="secondary" type="button">Register / use this name</button>
-                    <div id="playerIdentityStatus" class="identityStatus" role="status" aria-live="polite">Register your name to get a player ID.</div>
-                    <div class="identityNote">No password: anyone entering this name will use the same player identity.</div>
+                <h1>Sat Sprint</h1>
+                <p class="introCopy">Run, dodge, learn, and chase the global high score.</p>
+                <div id="playerIdentity" class="rewardBox">
+                    <div id="registeredPlayerSummary" hidden>
+                        <div class="identityGreeting"><span>PLAYING AS</span><strong id="registeredPlayerName"></strong></div>
+                        <button id="changePlayerNameBtn" class="secondary" type="button">Change name</button>
+                    </div>
+                    <div id="playerIdentityEditor">
+                        <label class="identityLabel" for="playerName">Choose your global player name</label>
+                        <div class="identityForm">
+                            <input id="playerName" type="text" maxlength="16" autocomplete="nickname" placeholder="Your player name"
+                                style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(247,147,26,.35); background:#0f172a; color:#fff; font-size:14px;" />
+                            <button id="registerPlayerBtn" class="secondary" type="button">Save name</button>
+                        </div>
+                        <div id="playerIdentityStatus" class="identityStatus" role="status" aria-live="polite">Names are public. No password is used.</div>
+                        <button id="cancelChangePlayerNameBtn" class="secondary" type="button" hidden>Cancel</button>
+                    </div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px;">
                     <button id="toggleHighScoresBtn" class="secondary" type="button">Show High Scores</button>
@@ -752,8 +776,10 @@
                 </div>
                 <div class="homeButtons">
                     <button id="homePlayBtn">▶ Play</button>
-                    <button id="supportBtn" class="secondary">⚡ Support Developer</button>
-                    <button id="walletBtn" class="secondary">⚡ Rewards & Wallet</button>
+                    <div class="homeSecondaryActions">
+                        <button id="supportBtn" class="secondary">⚡ Support</button>
+                        <button id="walletBtn" class="secondary">⚡ Rewards & Wallet</button>
+                    </div>
                 </div>
                 <div id="homeTimer" class="timer"></div>
             </div>
