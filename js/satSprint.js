@@ -16,6 +16,7 @@
     const ctx = canvas.getContext('2d');
     const wrap = document.getElementById('wrap');
     const scoreEl = document.getElementById('score');
+    const seasonStageLabel = document.getElementById('seasonStage');
     const bestEl = document.getElementById('best');
     const startScreen = document.getElementById('startScreen');
     const overScreen = document.getElementById('overScreen');
@@ -49,6 +50,7 @@
     const walletGameSats = document.getElementById('walletGameSats');
     const walletPoints = document.getElementById('walletPoints');
     const walletReward = document.getElementById('walletReward');
+    const homeLearningLevel = document.getElementById('homeLearningLevel');
     const playerNameInput = document.getElementById('playerName');
     const registerPlayerBtn = document.getElementById('registerPlayerBtn');
     const playerIdentityStatus = document.getElementById('playerIdentityStatus');
@@ -60,6 +62,7 @@
     const streakEl = document.getElementById('streak');
     const lightningEl = document.getElementById('lightning');
     const quizScreen = document.getElementById('quizScreen');
+    const quizLevelLabel = document.getElementById('quizLevelLabel');
     const quizQuestionEl = document.getElementById('quizQuestion');
     const quizAnswersEl = document.getElementById('quizAnswers');
     const quizFeedbackEl = document.getElementById('quizFeedback');
@@ -80,6 +83,23 @@
     let quizWarningDialogOpen = false;
 
     const STORE_KEY = 'sat_sprint_player_v3';
+    const KNOWLEDGE_LEVELS = ['Beginner', 'Intermediate', 'Expert'];
+    const CORRECT_ANSWERS_TO_ADVANCE = 5;
+    function emptyKnowledgeProgress() {
+        return { level: 0, correctToNext: 0, seenQuestionIds: { beginner: [], intermediate: [], expert: [] } };
+    }
+    function normalizeKnowledgeProgress(progress) {
+        const safe = emptyKnowledgeProgress();
+        if (!progress || typeof progress !== 'object') return safe;
+        safe.level = Math.max(0, Math.min(KNOWLEDGE_LEVELS.length - 1, Math.floor(Number(progress.level) || 0)));
+        safe.correctToNext = Math.max(0, Math.min(CORRECT_ANSWERS_TO_ADVANCE - 1, Math.floor(Number(progress.correctToNext) || 0)));
+        for (const key of Object.keys(safe.seenQuestionIds)) {
+            const seen = progress.seenQuestionIds && progress.seenQuestionIds[key];
+            safe.seenQuestionIds[key] = Array.isArray(seen) ? [...new Set(seen.filter(id => typeof id === 'string'))] : [];
+        }
+        if (safe.level === KNOWLEDGE_LEVELS.length - 1) safe.correctToNext = 0;
+        return safe;
+    }
     const defaultPlayer = {
         name: '',
         playerId: '',
@@ -89,7 +109,8 @@
         best: 0,
         lastLifeRefill: 0,
         developerTips: 0,
-        virtualRewardBalance: 0
+        virtualRewardBalance: 0,
+        knowledgeProgress: emptyKnowledgeProgress()
     };
     let account = { ...defaultPlayer };
     let editingPlayerName = false;
@@ -97,6 +118,7 @@
     const cleanName = scores.cleanName;
     const esc = scores.escapeHtml;
     try { account = { ...defaultPlayer, ...(JSON.parse(localStorage.getItem(STORE_KEY)) || {}) }; } catch (e) { }
+    account.knowledgeProgress = normalizeKnowledgeProgress(account.knowledgeProgress);
     function savePlayer() { localStorage.setItem(STORE_KEY, JSON.stringify(account)); }
 
     async function saveRunRemote(snapshot) {
@@ -170,8 +192,10 @@
                 }
                 throw new Error(result.error || `Could not register that name (server error ${response.status}).`);
             }
+            const previousPlayerId = account.playerId;
             account.name = cleanName(result.name);
             account.playerId = result.id;
+            if (previousPlayerId && previousPlayerId !== result.id) account.knowledgeProgress = emptyKnowledgeProgress();
             savePlayer();
             editingPlayerName = false;
             setPlayerNameUI();
@@ -495,24 +519,61 @@
     let quizStreak = 0;
     let lightningMode = 0;
 
-    // expanded quiz bank (was only 5)
-    const quizBank = [
-        { q: 'What is a sat?', a: ['A mining machine', 'The smallest unit of bitcoin', 'A Bitcoin block'], correct: 1 },
-        { q: 'What does Lightning primarily enable?', a: ['Faster Bitcoin payments', 'Free bitcoin forever', 'Mining on a phone'], correct: 0 },
-        { q: 'What is a block?', a: ['A wallet password', 'A batch of Bitcoin transactions', 'A type of Lightning bolt'], correct: 1 },
-        { q: 'Who can run a Bitcoin node?', a: ['Only miners', 'Anyone with suitable software and resources', 'Only exchanges'], correct: 1 },
-        { q: 'What happens at a Bitcoin halving?', a: ['Block subsidy is reduced', 'All wallets reset', 'Bitcoin stops'], correct: 0 },
-        { q: 'How many sats are in 1 bitcoin?', a: ['1,000', '100 million', '1 million'], correct: 1 },
-        { q: 'What is the Bitcoin supply cap?', a: ['21 million BTC', 'Unlimited', '2.1 million BTC'], correct: 0 },
-        { q: 'Who invented Bitcoin?', a: ['Vitalik Buterin', 'Satoshi Nakamoto', 'Elon Musk'], correct: 1 },
-        { q: 'What is a mempool?', a: ['A pool for miners', 'A waiting room for unconfirmed transactions', 'A type of wallet'], correct: 1 },
-        { q: 'What is the current block reward after the 2024 halving?', a: ['6.25 BTC', '3.125 BTC', '12.5 BTC'], correct: 1 },
-        { q: 'What is a private key?', a: ['A public address', 'Secret data that controls your bitcoin', 'A password for exchanges'], correct: 1 },
-        { q: 'What is a seed phrase?', a: ['A list of words that backs up your wallet', 'A Bitcoin ticker', 'A mining term'], correct: 0 },
-        { q: 'What does HODL mean?', a: ['Hold On for Dear Life', 'A trading bot', 'A type of coin'], correct: 0 },
-        { q: 'What is the Lightning Network?', a: ['A second-layer payment network', 'A mining pool', 'A Bitcoin fork'], correct: 0 },
-        { q: 'What is a nonce?', a: ['A wallet type', 'A number used once in mining', 'A transaction fee'], correct: 1 }
-    ];
+    // Each level has its own shuffled question cycle. A player's seen IDs are
+    // persisted in their local profile so a refresh or new run won't repeat one.
+    const quizBanks = {
+        beginner: [
+            { id: 'b-sat', q: 'What is a satoshi (sat)?', a: ['The smallest unit of bitcoin commonly used', 'A Bitcoin block', 'A type of wallet'], correct: 0 },
+            { id: 'b-units', q: 'How many satoshis are in one bitcoin?', a: ['One million', 'One hundred million', 'One thousand'], correct: 1 },
+            { id: 'b-block', q: 'What does a Bitcoin block contain?', a: ['A batch of transactions', 'A list of passwords', 'A wallet backup'], correct: 0 },
+            { id: 'b-node', q: 'What does a Bitcoin full node do?', a: ['Independently checks Bitcoin rules and transactions', 'Sets the price of bitcoin', 'Creates every wallet'], correct: 0 },
+            { id: 'b-supply', q: 'What is Bitcoin’s maximum supply limit?', a: ['21 million BTC', 'There is no limit', '210 million BTC'], correct: 0 },
+            { id: 'b-halving', q: 'What changes during a Bitcoin halving?', a: ['The block subsidy is cut in half', 'Wallet balances are cut in half', 'Transactions stop for a day'], correct: 0 },
+            { id: 'b-mempool', q: 'What is the mempool?', a: ['A waiting area for transactions not yet confirmed', 'A type of mining machine', 'A list of wallet passwords'], correct: 0 },
+            { id: 'b-lightning', q: 'What is the Lightning Network designed to help with?', a: ['Fast, low-value Bitcoin payments', 'Changing Bitcoin’s supply limit', 'Replacing private keys'], correct: 0 },
+            { id: 'b-private-key', q: 'What does a private key let its holder do?', a: ['Authorize spending from its associated funds', 'Change the Bitcoin rules', 'Reverse any confirmed payment'], correct: 0 },
+            { id: 'b-seed', q: 'What is a wallet recovery phrase for?', a: ['Restoring access to a wallet', 'Sharing a payment receipt', 'Reducing transaction fees'], correct: 0 },
+            { id: 'b-address', q: 'What is a Bitcoin address mainly used for?', a: ['Receiving a payment', 'Signing a block', 'Recovering a lost seed phrase'], correct: 0 },
+            { id: 'b-confirmation', q: 'A transaction gets its first confirmation when…', a: ['It is included in a block accepted by the network', 'It appears in a wallet draft', 'A miner sees it in the mempool'], correct: 0 },
+            { id: 'b-fees', q: 'Why do Bitcoin transactions include fees?', a: ['They compete for limited block space', 'They pay the wallet company a subscription', 'They destroy the bitcoin sent'], correct: 0 },
+            { id: 'b-miner', q: 'What is a Bitcoin miner trying to do?', a: ['Find valid proof of work for a block', 'Choose who may own bitcoin', 'Approve transactions by identity'], correct: 0 },
+            { id: 'b-inventor', q: 'Who published the original Bitcoin paper?', a: ['Satoshi Nakamoto', 'Hal Finney alone', 'The Bitcoin Foundation'], correct: 0 }
+        ],
+        intermediate: [
+            { id: 'i-utxo', q: 'What is a UTXO?', a: ['An unspent transaction output available to be spent', 'A node that has never synced', 'A Lightning routing fee'], correct: 0 },
+            { id: 'i-pow', q: 'In proof of work, miners repeatedly hash block data mainly to…', a: ['Find a hash that meets the network target', 'Encrypt every transaction', 'Reveal the sender’s private key'], correct: 0 },
+            { id: 'i-retarget', q: 'Bitcoin adjusts mining difficulty to keep…', a: ['Block production near its target pace over time', 'Every transaction the same size', 'The bitcoin price within a fixed range'], correct: 0 },
+            { id: 'i-merkle', q: 'What does a Merkle root summarize?', a: ['The transactions committed to by a block', 'The full history of every wallet', 'The current mining hardware list'], correct: 0 },
+            { id: 'i-coinbase', q: 'What is the coinbase transaction in a block?', a: ['The transaction that assigns the block subsidy and fees', 'A payment to the Coinbase exchange', 'A transaction with no inputs from any wallet'], correct: 0 },
+            { id: 'i-script', q: 'Bitcoin Script is primarily used to…', a: ['Define conditions for spending transaction outputs', 'Run general-purpose web applications', 'Set exchange rates'], correct: 0 },
+            { id: 'i-segwit', q: 'What did SegWit change in Bitcoin transactions?', a: ['It moved signature data into witness data and helped address malleability', 'It replaced proof of work with proof of stake', 'It made all transactions private'], correct: 0 },
+            { id: 'i-taproot', q: 'What signature scheme did Taproot introduce for key-path spends?', a: ['Schnorr signatures', 'RSA signatures', 'PGP signatures'], correct: 0 },
+            { id: 'i-channel', q: 'In a Lightning payment channel, most updates happen…', a: ['Off-chain between participants, with settlement possible on-chain', 'In a new Bitcoin block for every update', 'On a central exchange ledger'], correct: 0 },
+            { id: 'i-liquidity', q: 'Why does Lightning routing depend on channel liquidity?', a: ['A route needs enough available balance in the payment direction', 'Liquidity sets the Bitcoin supply cap', 'Channels only route to miners'], correct: 0 },
+            { id: 'i-watchonly', q: 'What can a watch-only wallet generally do?', a: ['Monitor addresses without holding the keys needed to spend', 'Sign transactions without keys', 'Reverse confirmed payments'], correct: 0 },
+            { id: 'i-rbf', q: 'What is Replace-by-Fee used for?', a: ['Broadcasting a replacement transaction with a higher fee under applicable policy', 'Replacing a Bitcoin block after confirmation', 'Changing a wallet’s seed phrase'], correct: 0 },
+            { id: 'i-satvb', q: 'What does a fee rate in sat/vB measure?', a: ['Satoshis paid per virtual byte of transaction size', 'Satoshis per bitcoin block reward', 'Virtual bytes per Lightning channel'], correct: 0 },
+            { id: 'i-reorg', q: 'What is a chain reorganization?', a: ['A node switching to a valid competing chain with more accumulated work', 'A wallet moving funds to a new address', 'A miner changing its pool'], correct: 0 },
+            { id: 'i-hashlock', q: 'What does a hash lock require to be satisfied?', a: ['A value whose hash matches a specified hash', 'A valid email address', 'A miner’s private key'], correct: 0 }
+        ],
+        expert: [
+            { id: 'e-chainwork', q: 'When comparing valid Bitcoin chains, what determines which chain a node prefers?', a: ['The chain with the most accumulated proof of work', 'The chain with the most blocks regardless of work', 'The chain announced by the most exchanges'], correct: 0 },
+            { id: 'e-header', q: 'Which item is committed to by a Bitcoin block header?', a: ['The Merkle root of the block’s transactions', 'Every transaction in full', 'The miner’s identity document'], correct: 0 },
+            { id: 'e-nonce', q: 'Why do miners vary extra-nonce data as well as the header nonce?', a: ['To create more candidate header hashes when nonce values are exhausted', 'To change the block subsidy', 'To avoid validating transactions'], correct: 0 },
+            { id: 'e-signature', q: 'What does a valid digital signature prove in a Bitcoin spend?', a: ['Authorization by the required key, without revealing its private key', 'The real-world identity of the spender', 'That the payment cannot be replaced before confirmation'], correct: 0 },
+            { id: 'e-hash', q: 'Bitcoin proof of work uses which hash construction for block headers?', a: ['Double SHA-256', 'Single MD5', 'SHA-1 followed by RSA'], correct: 0 },
+            { id: 'e-psbt', q: 'What is a PSBT designed to support?', a: ['Passing an unsigned or partially signed transaction between signers', 'Sending private keys to miners', 'Compressing the blockchain'], correct: 0 },
+            { id: 'e-htlc', q: 'What two conditions are commonly combined in a Lightning HTLC?', a: ['A hash condition and a time lock', 'A miner fee and a seed phrase', 'A block height and an exchange rate'], correct: 0 },
+            { id: 'e-cltv', q: 'What does CHECKLOCKTIMEVERIFY enforce in a spending script?', a: ['An absolute time or block-height condition before spending', 'A maximum transaction fee', 'A minimum number of signatures from miners'], correct: 0 },
+            { id: 'e-csv', q: 'What does CHECKSEQUENCEVERIFY support?', a: ['Relative time-lock conditions on an output', 'Changing a transaction after confirmation', 'Setting mining difficulty'], correct: 0 },
+            { id: 'e-coin-selection', q: 'Why might a wallet create a change output?', a: ['Inputs are spent whole, so leftover value is returned to a wallet-controlled output', 'Change outputs are required by miners for every payment', 'It hides the transaction from full nodes'], correct: 0 },
+            { id: 'e-txid', q: 'What is a key effect of SegWit’s witness separation on a transaction ID?', a: ['Witness data is excluded from the traditional txid calculation', 'The txid becomes the recipient’s address', 'The txid changes every time a node relays it'], correct: 0 },
+            { id: 'e-difficulty', q: 'What is Bitcoin’s difficulty adjustment based on?', a: ['Observed time to mine the previous retarget period compared with the target', 'The number of active wallets', 'The market price of bitcoin'], correct: 0 },
+            { id: 'e-watchtower', q: 'What can a Lightning watchtower help a user do?', a: ['Detect and respond to certain channel breaches while the user is offline', 'Recover a lost seed phrase', 'Guarantee every payment routes instantly'], correct: 0 },
+            { id: 'e-splice', q: 'What does Lightning channel splicing allow participants to do?', a: ['Change channel funding while keeping the channel operational through the process', 'Change Bitcoin’s consensus rules', 'Route a payment without any channel liquidity'], correct: 0 },
+            { id: 'e-pool', q: 'Joining a mining pool changes how miners earn rewards, but who independently enforces consensus rules?', a: ['Each validating full node', 'The mining pool operator alone', 'The wallet provider'], correct: 0 }
+        ]
+    };
 
     // ---------- game constants ----------
     const GROUND_Y_RATIO = 0.78;
@@ -531,6 +592,18 @@
     // ---------- parallax background data ----------
     let stars = [];
     let city = [];
+    const SEASON_STAGE_DISTANCE = 150;
+    const SEASONS = [
+        { name: 'SPRING', icon: '🌸', particle: 'petal', sky: ['#102039', '#28576a', '#9b6872'], horizonGlow: 'rgba(255,151,190,0.3)', aurora: 'rgba(111,225,185,0.17)', celestial: ['#fff0bb', '#ffc879', '#eb8f50'], farHills: ['#43765e', '#29494b'], nearHills: ['#35634a', '#203c39'], ground: ['#29463a', '#152c29', '#0c191a'], edge: '#ffacd0' },
+        { name: 'SUMMER', icon: '☀', particle: 'spark', sky: ['#082b55', '#12658c', '#f1a45d'], horizonGlow: 'rgba(255,195,92,0.34)', aurora: 'rgba(49,188,216,0.18)', celestial: ['#fff6bd', '#ffd34e', '#f58b24'], farHills: ['#42835d', '#286149'], nearHills: ['#31754c', '#1d4b39'], ground: ['#304d38', '#183328', '#0b1b1d'], edge: '#ffd166' },
+        { name: 'AUTUMN', icon: '🍂', particle: 'leaf', sky: ['#17172f', '#57334a', '#b65f34'], horizonGlow: 'rgba(255,119,55,0.32)', aurora: 'rgba(201,92,95,0.15)', celestial: ['#ffe1b0', '#ffae55', '#d85a2d'], farHills: ['#76543e', '#4e3d3c'], nearHills: ['#67452f', '#392d32'], ground: ['#3b2928', '#231d24', '#11141c'], edge: '#ff873e' },
+        { name: 'WINTER', icon: '❄', particle: 'snow', sky: ['#091b37', '#24547b', '#9cb9c8'], horizonGlow: 'rgba(137,218,255,0.28)', aurora: 'rgba(91,177,255,0.19)', celestial: ['#f3fcff', '#b9e9ff', '#70b9e8'], farHills: ['#577d98', '#34536d'], nearHills: ['#466780', '#293e55'], ground: ['#273e53', '#172b3d', '#0b1727'], edge: '#a5e8ff' }
+    ];
+
+    function seasonForDistance(value) {
+        const stage = Math.floor(Math.max(0, Number(value) || 0) / SEASON_STAGE_DISTANCE);
+        return { ...SEASONS[stage % SEASONS.length], stage: stage + 1 };
+    }
 
     function resize() {
         const rect = wrap.getBoundingClientRect();
@@ -560,15 +633,16 @@
 
     function buildStars() {
         stars = [];
-        const count = Math.max(30, Math.floor(W / 12));
+        const count = Math.max(48, Math.floor(W / 7));
         for (let i = 0; i < count; i++) {
             stars.push({
                 x: Math.random() * W,
                 y: Math.random() * H * 0.62,
-                r: 0.6 + Math.random() * 1.6,
+                r: 0.7 + Math.random() * 1.8,
                 p: Math.random() * Math.PI * 2,
                 sp: 0.5 + Math.random() * 1.5,
-                layer: Math.random() < 0.6 ? 1 : 2
+                layer: Math.random() < 0.6 ? 1 : 2,
+                color: ['#dbeafe', '#bae6fd', '#fde68a'][Math.floor(Math.random() * 3)]
             });
         }
     }
@@ -585,7 +659,12 @@
             for (let r = 0; r < rows; r++) {
                 for (let cIdx = 0; cIdx < cols; cIdx++) {
                     if (Math.random() < 0.35) {
-                        windows.push({ wx: cIdx * 14 + 6, wy: r * 18 + 8, lit: Math.random() < 0.7 });
+                        windows.push({
+                            wx: cIdx * 14 + 6,
+                            wy: r * 18 + 8,
+                            lit: Math.random() < 0.7,
+                            color: Math.random() < 0.16 ? 'rgba(105,211,255,0.85)' : 'rgba(255,177,75,0.82)'
+                        });
                     }
                 }
             }
@@ -719,19 +798,59 @@
         quizWarningDialogOpen = false;
         quizPending = false;
         quizTimer = 0;
-        const q = quizBank[Math.floor(Math.random() * quizBank.length)];
+        const progress = normalizeKnowledgeProgress(account.knowledgeProgress);
+        account.knowledgeProgress = progress;
+        const levelKey = ['beginner', 'intermediate', 'expert'][progress.level];
+        const bank = quizBanks[levelKey];
+        let unseen = bank.filter(question => !progress.seenQuestionIds[levelKey].includes(question.id));
+        if (!unseen.length) {
+            progress.seenQuestionIds[levelKey] = [];
+            unseen = bank.slice();
+        }
+        const q = unseen[Math.floor(Math.random() * unseen.length)];
+        progress.seenQuestionIds[levelKey].push(q.id);
+        savePlayer();
+        updateHomeUI();
+        if (quizLevelLabel) {
+            quizLevelLabel.textContent = `${KNOWLEDGE_LEVELS[progress.level].toUpperCase()} · ${progress.correctToNext}/${CORRECT_ANSWERS_TO_ADVANCE} CORRECT TO NEXT LEVEL`;
+        }
         quizQuestionEl.textContent = q.q;
         quizAnswersEl.innerHTML = '';
         quizFeedbackEl.textContent = '';
-        q.a.forEach((answer, i) => {
+        const shuffledAnswers = q.a.map((answer, index) => ({ answer, correct: index === q.correct }));
+        for (let i = shuffledAnswers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
+        }
+        let answered = false;
+        shuffledAnswers.forEach(option => {
             const b = document.createElement('button');
-            b.textContent = answer;
+            b.textContent = option.answer;
             b.onclick = () => {
-                if (i === q.correct) {
+                if (answered) return;
+                answered = true;
+                quizAnswersEl.querySelectorAll('button').forEach(button => { button.disabled = true; });
+                if (option.correct) {
                     quizStreak++;
                     rewardPoints += 250;
                     lightningCharge = Math.min(100, lightningCharge + 25);
-                    quizFeedbackEl.textContent = '✓ Correct! +250 reward points';
+                    const currentProgress = account.knowledgeProgress;
+                    let levelUp = false;
+                    if (currentProgress.level < KNOWLEDGE_LEVELS.length - 1) {
+                        currentProgress.correctToNext++;
+                        if (currentProgress.correctToNext >= CORRECT_ANSWERS_TO_ADVANCE) {
+                            currentProgress.level++;
+                            currentProgress.correctToNext = 0;
+                            levelUp = true;
+                        }
+                    }
+                    savePlayer();
+                    updateHomeUI();
+                    quizFeedbackEl.textContent = levelUp
+                        ? `✓ Level up! ${KNOWLEDGE_LEVELS[currentProgress.level]} unlocked and saved!`
+                        : currentProgress.level < KNOWLEDGE_LEVELS.length - 1
+                            ? `✓ Correct! +250 points · ${currentProgress.correctToNext}/${CORRECT_ANSWERS_TO_ADVANCE} to ${KNOWLEDGE_LEVELS[currentProgress.level + 1]}`
+                            : '✓ Correct! +250 reward points · Expert level saved';
                     quizFeedbackEl.style.color = '#22c55e';
                     if (window.SatAudio) window.SatAudio.sfx.quizCorrect();
                 } else {
@@ -778,6 +897,14 @@
         refillLives();
         homeLives.textContent = account.lives + ' / 10';
         homeSats.textContent = account.gameSats;
+        const knowledgeProgress = normalizeKnowledgeProgress(account.knowledgeProgress);
+        account.knowledgeProgress = knowledgeProgress;
+        if (homeLearningLevel) {
+            const isExpert = knowledgeProgress.level === KNOWLEDGE_LEVELS.length - 1;
+            homeLearningLevel.textContent = isExpert
+                ? 'EXPERT · SAVED'
+                : `${KNOWLEDGE_LEVELS[knowledgeProgress.level].toUpperCase()} · ${CORRECT_ANSWERS_TO_ADVANCE - knowledgeProgress.correctToNext} TO NEXT`;
+        }
         walletGameSats.textContent = account.gameSats;
         walletPoints.textContent = rewardPoints;
         walletReward.textContent = account.virtualRewardBalance + ' sats';
@@ -1114,61 +1241,98 @@
 
     // ---------- draw ----------
     function drawBackground() {
-        // deep gradient sky
+        const season = seasonForDistance(distance);
+        const stageLabel = `${season.icon} ${season.name} · STAGE ${season.stage}`;
+        if (seasonStageLabel && seasonStageLabel.textContent !== stageLabel) seasonStageLabel.textContent = stageLabel;
+        // Saturated twilight sky with soft color blooms behind the skyline.
         const g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, '#05070f');
-        g.addColorStop(0.45, '#0b1220');
-        g.addColorStop(1, '#3b2415');
+        g.addColorStop(0, season.sky[0]);
+        g.addColorStop(0.48, season.sky[1]);
+        g.addColorStop(1, season.sky[2]);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, W, H);
+
+        const horizonGlow = ctx.createRadialGradient(W * 0.52, groundY * 0.86, 8, W * 0.52, groundY * 0.86, W * 0.72);
+        horizonGlow.addColorStop(0, season.horizonGlow);
+        horizonGlow.addColorStop(0.48, 'rgba(244,89,90,0.09)');
+        horizonGlow.addColorStop(1, 'rgba(244,89,90,0)');
+        ctx.fillStyle = horizonGlow;
+        ctx.fillRect(0, 0, W, groundY + 20);
+        const aurora = ctx.createRadialGradient(W * 0.22, H * 0.26, 2, W * 0.22, H * 0.26, W * 0.58);
+        aurora.addColorStop(0, season.aurora);
+        aurora.addColorStop(1, 'rgba(81,116,255,0)');
+        ctx.fillStyle = aurora;
+        ctx.fillRect(0, 0, W, groundY);
 
         // twinkling stars (proper wrap: offset goes negative, % must stay >= 0)
         for (const s of stars) {
             const tw = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(elapsed * s.sp + s.p));
-            ctx.globalAlpha = tw * (s.layer === 2 ? 0.8 : 0.5);
-            ctx.fillStyle = '#cdd6f4';
+            ctx.globalAlpha = tw * (s.layer === 2 ? 0.95 : 0.68);
+            ctx.fillStyle = s.color;
             const sx = ((s.x + starOffset * s.layer * 0.2) % W + W) % W;
             ctx.beginPath(); ctx.arc(sx, s.y, s.r, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = 1;
 
-        // glowing bitcoin moon
+        // A bright seasonal sun/moon glow keeps the sky recognizable across all palettes.
         const moonX = W * 0.82, moonY = H * 0.18;
-        const glow = ctx.createRadialGradient(moonX, moonY, 6, moonX, moonY, 110);
-        glow.addColorStop(0, 'rgba(247,147,26,0.55)');
+        const glow = ctx.createRadialGradient(moonX, moonY, 6, moonX, moonY, 135);
+        glow.addColorStop(0, season.horizonGlow);
+        glow.addColorStop(0.35, season.aurora);
         glow.addColorStop(1, 'rgba(247,147,26,0)');
         ctx.fillStyle = glow;
         ctx.beginPath(); ctx.arc(moonX, moonY, 110, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(247,147,26,0.95)';
-        ctx.beginPath(); ctx.arc(moonX, moonY, 30, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#3b2415';
+        const moonFace = ctx.createRadialGradient(moonX - 10, moonY - 12, 2, moonX, moonY, 38);
+        moonFace.addColorStop(0, season.celestial[0]);
+        moonFace.addColorStop(0.55, season.celestial[1]);
+        moonFace.addColorStop(1, season.celestial[2]);
+        ctx.fillStyle = moonFace;
+        ctx.beginPath(); ctx.arc(moonX, moonY, 34, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = season.name === 'WINTER' ? '#224663' : '#6a3b28';
         ctx.font = 'bold 30px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('₿', moonX, moonY + 1);
 
         // distant city skyline (scrolls LEFT with the world — offset is negative)
-        ctx.fillStyle = '#101b2c';
         const cityPeriod = W + 400;
         for (const b of city) {
             const bx = ((b.x + cityOffset) % cityPeriod + cityPeriod) % cityPeriod;
+            const buildingGradient = ctx.createLinearGradient(0, groundY - b.h, 0, groundY);
+            buildingGradient.addColorStop(0, season.farHills[0]);
+            buildingGradient.addColorStop(1, season.farHills[1]);
+            ctx.fillStyle = buildingGradient;
             ctx.fillRect(bx, groundY - b.h, b.w, b.h);
             // lit windows
             for (const win of b.windows) {
                 if (win.lit) {
-                    ctx.fillStyle = 'rgba(247,147,26,0.55)';
+                    ctx.fillStyle = win.color;
                     ctx.fillRect(bx + win.wx, groundY - b.h + win.wy, 5, 7);
                 }
             }
         }
-        ctx.fillStyle = '#263442';
-        drawHillRow(hillOffset1, H * 0.62, 70, groundY);
-        ctx.fillStyle = '#1b2835';
-        drawHillRow(hillOffset2, H * 0.7, 46, groundY);
+        const farHillGradient = ctx.createLinearGradient(0, H * 0.52, 0, groundY);
+        farHillGradient.addColorStop(0, season.farHills[0]);
+        farHillGradient.addColorStop(1, season.farHills[1]);
+        ctx.fillStyle = farHillGradient;
+        drawHillRow(hillOffset1 * 0.42, H * 0.61, 88, groundY);
+        const nearHills = ctx.createLinearGradient(0, H * 0.64, 0, groundY);
+        nearHills.addColorStop(0, season.nearHills[0]);
+        nearHills.addColorStop(1, season.nearHills[1]);
+        ctx.fillStyle = nearHills;
+        drawHillRow(hillOffset2, H * 0.7, 54, groundY);
+        drawSeasonParticles(season);
 
         // ground
-        ctx.fillStyle = '#171717';
+        const groundGradient = ctx.createLinearGradient(0, groundY, 0, H);
+        groundGradient.addColorStop(0, season.ground[0]);
+        groundGradient.addColorStop(0.12, season.ground[1]);
+        groundGradient.addColorStop(1, season.ground[2]);
+        ctx.fillStyle = groundGradient;
         ctx.fillRect(0, groundY, W, H - groundY);
-        ctx.fillStyle = '#f7931a';
-        ctx.fillRect(0, groundY, W, 10);
+        ctx.shadowColor = season.edge;
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = season.edge;
+        ctx.fillRect(0, groundY, W, 4);
+        ctx.shadowBlur = 0;
         // animated ground stripes for speed feel
         ctx.fillStyle = 'rgba(247,147,26,0.18)';
         const stripeW = 46;
@@ -1194,6 +1358,45 @@
         ctx.lineTo(W, bottomY + 2);
         ctx.closePath();
         ctx.fill();
+    }
+
+    function drawSeasonParticles(season) {
+        const count = season.particle === 'snow' ? 28 : 18;
+        const fallRate = season.particle === 'snow' ? 22 : season.particle === 'leaf' ? 34 : 28;
+        for (let i = 0; i < count; i++) {
+            const seedX = (i * 97 + 23) % W;
+            const phase = i * 1.73;
+            const x = (seedX + Math.sin(elapsed * 0.7 + phase) * 22 - elapsed * (season.particle === 'leaf' ? 12 : 4) + W * 2) % W;
+            const y = ((i * 53 + elapsed * fallRate) % Math.max(1, groundY * 0.78)) + 8;
+            const alpha = 0.32 + 0.35 * (0.5 + 0.5 * Math.sin(elapsed * 1.4 + phase));
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.translate(x, y);
+            ctx.rotate(elapsed * (season.particle === 'leaf' ? 1.3 : 0.35) + phase);
+            if (season.particle === 'petal') {
+                ctx.fillStyle = i % 3 === 0 ? '#fff1f2' : '#ff9ec3';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 5, 2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (season.particle === 'leaf') {
+                ctx.fillStyle = ['#ffb347', '#e76f32', '#d94f37'][i % 3];
+                ctx.beginPath();
+                ctx.moveTo(-5, 0);
+                ctx.quadraticCurveTo(-2, -5, 5, -3);
+                ctx.quadraticCurveTo(3, 3, -5, 0);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(91,45,25,.75)';
+                ctx.lineWidth = 0.7;
+                ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(4, -2); ctx.stroke();
+            } else if (season.particle === 'snow') {
+                ctx.fillStyle = i % 4 === 0 ? '#ffffff' : '#c8edff';
+                ctx.beginPath(); ctx.arc(0, 0, 1.4 + (i % 3) * 0.55, 0, Math.PI * 2); ctx.fill();
+            } else {
+                ctx.fillStyle = i % 3 === 0 ? '#fff3bd' : '#ffe08a';
+                ctx.beginPath(); ctx.arc(0, 0, 1 + (i % 3) * 0.45, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore();
+        }
     }
 
     function drawGaps() {
@@ -1250,27 +1453,57 @@
         for (const o of obstacles) {
             if (o.kind !== 'drone') continue;
             const y = o.y + Math.sin(o.phase) * 12;
-            // engine glow
-            const glow = ctx.createRadialGradient(o.x + o.w / 2, y + o.h / 2, 2, o.x + o.w / 2, y + o.h / 2, 22);
-            glow.addColorStop(0, 'rgba(239,68,68,0.5)');
-            glow.addColorStop(1, 'rgba(239,68,68,0)');
+            const cx = o.x + o.w / 2;
+            const cy = y + o.h / 2;
+            // Bright red hazard glow makes the moving orb read clearly against the night sky.
+            const glow = ctx.createRadialGradient(cx, cy, 3, cx, cy, 32);
+            glow.addColorStop(0, 'rgba(255,51,66,0.62)');
+            glow.addColorStop(0.55, 'rgba(239,35,56,0.24)');
+            glow.addColorStop(1, 'rgba(239,35,56,0)');
             ctx.fillStyle = glow;
-            ctx.beginPath(); ctx.arc(o.x + o.w / 2, y + o.h / 2, 22, 0, Math.PI * 2); ctx.fill();
-            // body
-            ctx.fillStyle = '#7f1d1d';
-            ctx.beginPath(); ctx.ellipse(o.x + o.w / 2, y + o.h / 2, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.fill();
-            // eye
-            ctx.fillStyle = '#fca5a5';
-            ctx.beginPath(); ctx.arc(o.x + o.w / 2, y + o.h / 2, 5, 0, Math.PI * 2); ctx.fill();
-            // rotor
-            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2); ctx.fill();
+            // Short radial spikes give this enemy a dangerous silhouette at a glance.
+            ctx.save();
+            ctx.translate(cx, cy);
+            for (let spike = 0; spike < 8; spike++) {
+                const angle = (Math.PI * 2 * spike) / 8;
+                const inner = 12;
+                const outer = 19;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(angle - 0.22) * inner, Math.sin(angle - 0.22) * inner);
+                ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+                ctx.lineTo(Math.cos(angle + 0.22) * inner, Math.sin(angle + 0.22) * inner);
+                ctx.closePath();
+                ctx.fillStyle = spike % 2 ? '#b40e28' : '#ff334a';
+                ctx.fill();
+                ctx.strokeStyle = '#7f1021';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            ctx.restore();
+            ctx.save();
+            ctx.shadowColor = '#ff263f';
+            ctx.shadowBlur = 12;
+            const body = ctx.createRadialGradient(cx - 7, cy - 7, 2, cx, cy, o.w * 0.62);
+            body.addColorStop(0, '#fff1f2');
+            body.addColorStop(0.18, '#ff717b');
+            body.addColorStop(0.52, '#f5223b');
+            body.addColorStop(0.82, '#ba1028');
+            body.addColorStop(1, '#641326');
+            ctx.fillStyle = body;
+            ctx.beginPath(); ctx.ellipse(cx, cy, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            // Dark warning face and bright exclamation mark distinguish a hazard from a collectible.
+            ctx.strokeStyle = '#3f0b19';
             ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(o.x + o.w / 2 - 12, y + o.h / 2 - 12);
-            ctx.lineTo(o.x + o.w / 2 + 12, y + o.h / 2 - 12);
-            ctx.moveTo(o.x + o.w / 2, y + o.h / 2 - 16);
-            ctx.lineTo(o.x + o.w / 2, y + o.h / 2 - 8);
-            ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(cx, cy, o.w / 2, o.h / 2, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(76,5,22,0.78)';
+            ctx.beginPath(); ctx.arc(cx, cy, 5.6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff7ed';
+            ctx.font = '900 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('!', cx, cy + 0.5);
         }
     }
 
@@ -1281,16 +1514,26 @@
             ctx.translate(c.x, y);
             const squeeze = Math.abs(Math.cos(c.bob * 0.7));
             ctx.scale(0.4 + 0.6 * squeeze, 1);
+            let outerColor, innerColor, rimColor, symbolColor;
             if (c.doubleJump) {
-                ctx.fillStyle = '#c084fc';
+                outerColor = '#d8b4fe'; innerColor = '#7c3aed'; rimColor = '#f3e8ff'; symbolColor = '#fff';
+            } else if (c.lightning) {
+                outerColor = '#7dd3fc'; innerColor = '#0284c7'; rimColor = '#e0f2fe'; symbolColor = '#fff';
             } else {
-                ctx.fillStyle = c.lightning ? '#38bdf8' : '#ffb300';
+                outerColor = '#fbbf24'; innerColor = '#b45309'; rimColor = '#fef3c7'; symbolColor = '#fff7ed';
             }
+            // Smooth concentric rims make collectibles read like tokens rather than hazards.
+            ctx.shadowColor = c.doubleJump ? 'rgba(192,132,252,.72)' : c.lightning ? 'rgba(56,189,248,.72)' : 'rgba(251,191,36,.72)';
+            ctx.shadowBlur = 11;
+            ctx.fillStyle = outerColor;
             ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = c.lightning ? '#0c4a6e' : '#d18a00';
-            if (c.doubleJump) ctx.fillStyle = '#7c3aed';
-            ctx.beginPath(); ctx.arc(0, 0, c.r * 0.5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff';
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = rimColor;
+            ctx.lineWidth = Math.max(1.5, c.r * 0.12);
+            ctx.beginPath(); ctx.arc(0, 0, c.r * 0.86, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = innerColor;
+            ctx.beginPath(); ctx.arc(0, 0, c.r * 0.65, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = symbolColor;
             ctx.font = 'bold ' + Math.max(11, c.r * 0.7) + 'px Arial';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             if (c.doubleJump) {

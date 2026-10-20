@@ -183,6 +183,23 @@
             border-radius: 16px;
         }
 
+        #seasonStage {
+            position: absolute;
+            left: 18px;
+            top: 58px;
+            padding: 6px 10px;
+            border: 1px solid rgba(255,255,255,.28);
+            border-radius: 999px;
+            background: rgba(10,17,31,.68);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .7px;
+            text-shadow: 0 1px 4px rgba(0,0,0,.6);
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+        }
+
         #best {
             font-size: 14px;
             background: rgba(255, 255, 255, 0.55);
@@ -543,6 +560,8 @@
         #homeScreen .homeSecondaryActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         #homeScreen .homeSecondaryActions button { padding: 9px 8px; border-bottom-width: 2px; font-size: 12px; }
         #homePlayBtn { width: 100%; padding: 13px 18px; }
+        .learningProgress { margin: -2px 0 12px; color: #cbd5e1; font-size: 11px; opacity: .82; }
+        .learningProgress strong { margin-left: 5px; color: #ffae42; letter-spacing: .5px; }
 
         #onlinePlayersWidget { position: absolute; z-index: 42; left: 12px; bottom: 14px; pointer-events: auto; color: #f8fafc; font-size: 11px; }
         #onlinePlayersToggle { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 999px; background: rgba(10, 16, 27, .88); color: white; font: inherit; font-size: 11px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); cursor: pointer; }
@@ -718,6 +737,7 @@
         <canvas id="c"></canvas>
         <div id="hud">
             <div id="score">⚡ 0 sats</div>
+            <div id="seasonStage" aria-live="polite">🌸 SPRING · STAGE 1</div>
             <div id="hudRight">
                 <div id="streak">🔥 0</div>
                 <div id="lightning">⚡ 0%</div>
@@ -774,6 +794,7 @@
                         <div id="homeSats" style="font-size:24px;font-weight:bold">0</div>
                     </div>
                 </div>
+                <div class="learningProgress">BITCOIN LEARNING LEVEL<strong id="homeLearningLevel">BEGINNER</strong></div>
                 <div class="homeButtons">
                     <button id="homePlayBtn">▶ Play</button>
                     <div class="homeSecondaryActions">
@@ -875,7 +896,7 @@
 
         <div class="overlay hidden" id="quizScreen">
             <div class="card">
-                <div class="label">DAILY BLOCK QUIZ</div>
+                <div id="quizLevelLabel" class="label">BEGINNER · 0/5 CORRECT TO NEXT LEVEL</div>
                 <h2 id="quizQuestion">What is a sat?</h2>
                 <div id="quizAnswers"></div>
                 <div id="quizFeedback" class="quizFeedback"></div>
